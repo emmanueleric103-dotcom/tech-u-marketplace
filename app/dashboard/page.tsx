@@ -1,32 +1,59 @@
 'use client'
 export const dynamic = 'force-dynamic'
+
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 
-type Product = { id: string; title: string; price: number; description: string }
+type Product = { id: string; title: string; price: number; category: string; created_at: string }
 
 export default function DashboardPage() {
+  const router = useRouter()
+  const [user, setUser] = useState<any>(null)
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     async function load() {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { setLoading(false); return }
-      const { data } = await supabase.from('products').select('*').eq('user_id', user.id).order('created_at', { ascending: false })
-      setProducts((data as Product[]) || [])
+      const { data } = await supabase.auth.getUser()
+      if (!data.user) { router.push('/auth/login'); return }
+      setUser(data.user)
+      const { data: prods } = await supabase.from('products').select('*').eq('user_id', data.user.id).order('created_at', { ascending: false })
+      if (prods) setProducts(prods as Product[])
       setLoading(false)
     }
     load()
-  }, [])
+  }, [router])
+
+  if (loading) return <div className="p-10 text-center text-sm text-zinc-500">Loading your listings...</div>
 
   return (
-    <div>
-      <h1 style={{ fontSize: '24px', fontWeight: 800 }}>My Listings</h1>
-      <p style={{ color: '#64748b', marginBottom: '18px' }}>Products where user_id = current user</p>
-      {loading ? <p>Loading...</p> : products.length===0 ? <div style={{ background: 'white', padding: '40px', borderRadius: '12px', border: '1px dashed #cbd5e1', textAlign: 'center' }}>You have no listings yet. Go to Sell.</div> : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '12px' }}>
-          {products.map(p=><div key={p.id} style={{ background: 'white', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '14px' }}><h4 style={{ margin: '0 0 6px', fontWeight: 700 }}>{p.title}</h4><p style={{ fontWeight: 800 }}>₦{p.price}</p><p style={{ fontSize: '12px', color: '#64748b' }}>{p.description?.slice(0,80)}</p></div>)}
+    <div className="max-w-[960px] mx-auto px-4 py-8">
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-[24px] font-extrabold">My Listings</h1>
+          <p className="text-[13px] text-zinc-500 mt-1">{products.length} active ads • Real count from DB where user_id = you</p>
+        </div>
+        <Link href="/sell" className="h-[40px] px-5 bg-[#16a34a] text-white rounded-full text-[13px] font-semibold flex items-center hover:bg-[#15803d]">+ Sell new</Link>
+      </div>
+
+      {products.length === 0 ? (
+        <div className="bg-white border rounded-[16px] p-12 text-center">
+          <div className="text-[36px]">📦</div>
+          <div className="font-bold mt-3">No listings yet</div>
+          <p className="text-[13px] text-zinc-500 mt-1">Your ads will appear here once you publish.</p>
+          <Link href="/sell" className="inline-flex mt-4 h-[40px] px-6 bg-black text-white rounded-full text-[13px] font-semibold items-center">Post your first ad</Link>
+        </div>
+      ) : (
+        <div className="grid md:grid-cols-3 gap-3">
+          {products.map(p => (
+            <div key={p.id} className="bg-white border rounded-[14px] p-4">
+              <div className="font-semibold text-[14px]">{p.title}</div>
+              <div className="text-[#16a34a] font-bold mt-1">₦{Number(p.price).toLocaleString()}</div>
+              <div className="text-[11px] text-zinc-500 mt-1">{p.category} • {new Date(p.created_at).toLocaleDateString()}</div>
+            </div>
+          ))}
         </div>
       )}
     </div>
