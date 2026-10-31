@@ -1,46 +1,41 @@
-export const dynamic = 'force-dynamic'
 'use client'
+export const dynamic = 'force-dynamic'
+
 import { useEffect, useState } from 'react'
-import { createClient } from '@/lib/supabase'
+import { supabase } from '@/lib/supabase'
 
 export default function ProfilePage() {
-  const supabase = createClient()
   const [user, setUser] = useState<any>(null)
-  const [profile, setProfile] = useState({ full_name: '', department: '', phone: '' })
-  const [msg, setMsg] = useState('')
+  const [fullName, setFullName] = useState('')
+  const [dept, setDept] = useState('')
 
-  useEffect(()=>{
-    const load = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      setUser(user)
-      if (user) {
-        const { data } = await supabase.from('profiles').select('*').eq('id', user.id).single()
-        if (data) setProfile({ full_name: data.full_name||'', department: data.department||'', phone: data.phone||'' })
+  useEffect(() => {
+    supabase.auth.getUser().then(({data}) => {
+      setUser(data.user)
+      if (data.user) {
+        supabase.from('profiles').select('*').eq('id', data.user.id).single().then(({data:profile}) => {
+          if (profile) {
+            setFullName(profile.full_name || '')
+            setDept(profile.department || '')
+          }
+        })
       }
-    }
-    load()
+    })
   }, [])
 
-  const save = async () => {
+  const saveProfile = async () => {
     if (!user) return
-    const { error } = await supabase.from('profiles').upsert({ id: user.id, ...profile, email: user.email })
-    if (error) setMsg(error.message)
-    else setMsg('Saved to public.profiles - FIX for 404 error!')
+    await supabase.from('profiles').upsert({ id: user.id, full_name: fullName, department: dept, email: user.email })
+    alert('Profile saved!')
   }
 
-  if (!user) return <div className="p-10 text-center border border-dashed rounded-2xl">Login to view profile (this page previously 404)</div>
-
   return (
-    <div className="max-w-lg mx-auto bg-white border rounded-2xl p-6">
-      <h1 className="text-xl font-black">Profile (Real - fixes 404)</h1>
-      <p className="text-sm text-zinc-500 mb-4">{user.email}</p>
-      <div className="space-y-3">
-        <input placeholder="Full name" value={profile.full_name} onChange={e=>setProfile({...profile, full_name: e.target.value})} />
-        <input placeholder="Department e.g. Computer Science" value={profile.department} onChange={e=>setProfile({...profile, department: e.target.value})} />
-        <input placeholder="Phone" value={profile.phone} onChange={e=>setProfile({...profile, phone: e.target.value})} />
-        <button onClick={save} className="w-full bg-black text-white py-2.5 rounded-full">Save</button>
-        {msg && <p className="text-sm p-2 bg-zinc-50 border rounded">{msg}</p>}
-      </div>
+    <div className="p-4 max-w-md mx-auto">
+      <h1 className="text-2xl font-bold mb-4">Edit Profile</h1>
+      <p className="text-sm text-gray-500 mb-4">{user?.email}</p>
+      <input className="border p-2 w-full mb-2" placeholder="Full Name" value={fullName} onChange={e=>setFullName(e.target.value)} />
+      <input className="border p-2 w-full mb-4" placeholder="Department" value={dept} onChange={e=>setDept(e.target.value)} />
+      <button onClick={saveProfile} className="bg-green-600 text-white px-4 py-2 rounded w-full">Save Profile</button>
     </div>
   )
 }
