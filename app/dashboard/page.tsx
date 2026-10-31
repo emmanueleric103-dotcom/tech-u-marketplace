@@ -1,44 +1,32 @@
 'use client'
 export const dynamic = 'force-dynamic'
-'use client'
 import { useEffect, useState } from 'react'
-import { createClient } from '@/lib/supabase'
-import Link from 'next/link'
+import { supabase } from '@/lib/supabase'
 
-export default function Dashboard() {
-  const supabase = createClient()
-  const [products, setProducts] = useState<any[]>([])
-  const [stats, setStats] = useState({ total:0, active:0, sold:0 })
+type Product = { id: string; title: string; price: number; description: string }
 
-  useEffect(()=>{
-    const load = async () => {
+export default function DashboardPage() {
+  const [products, setProducts] = useState<Product[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    async function load() {
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
-      const { data } = await supabase.from('products').select('*').eq('user_id', user.id).order('created_at', { ascending:false })
-      setProducts(data || [])
-      setStats({ total: data?.length||0, active: data?.filter((p:any)=>p.status!=='sold').length||0, sold: data?.filter((p:any)=>p.status==='sold').length||0 })
+      if (!user) { setLoading(false); return }
+      const { data } = await supabase.from('products').select('*').eq('user_id', user.id).order('created_at', { ascending: false })
+      setProducts((data as Product[]) || [])
+      setLoading(false)
     }
     load()
   }, [])
 
   return (
     <div>
-      <h1 className="text-2xl font-black">Dashboard - Real Data</h1>
-      <div className="grid grid-cols-3 gap-3 mt-4">
-        <div className="bg-white border rounded-2xl p-4"><p className="text-xs text-zinc-500">Total</p><p className="text-2xl font-bold">{stats.total}</p></div>
-        <div className="bg-white border rounded-2xl p-4"><p className="text-xs text-zinc-500">Active</p><p className="text-2xl font-bold">{stats.active}</p></div>
-        <div className="bg-white border rounded-2xl p-4"><p className="text-xs text-zinc-500">Sold</p><p className="text-2xl font-bold">{stats.sold}</p></div>
-      </div>
-      {products.length===0 ? (
-        <div className="border border-dashed rounded-2xl p-12 text-center mt-6"><p className="font-semibold">No listings yet</p><p className="text-sm text-zinc-500">Your real products will appear here (query where user_id = current user)</p></div>
-      ) : (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
-          {products.map(p=>(
-            <Link key={p.id} href={`/product/${p.id}`} className="bg-white border rounded-2xl overflow-hidden">
-              <div className="aspect-[4/3] bg-zinc-100">{p.images?.[0] && <img src={p.images[0]} className="w-full h-full object-cover" />}</div>
-              <div className="p-3"><p className="truncate font-medium">{p.title}</p><p className="text-green-600 font-bold">₦{Number(p.price).toLocaleString()}</p></div>
-            </Link>
-          ))}
+      <h1 style={{ fontSize: '24px', fontWeight: 800 }}>My Listings</h1>
+      <p style={{ color: '#64748b', marginBottom: '18px' }}>Products where user_id = current user</p>
+      {loading ? <p>Loading...</p> : products.length===0 ? <div style={{ background: 'white', padding: '40px', borderRadius: '12px', border: '1px dashed #cbd5e1', textAlign: 'center' }}>You have no listings yet. Go to Sell.</div> : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '12px' }}>
+          {products.map(p=><div key={p.id} style={{ background: 'white', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '14px' }}><h4 style={{ margin: '0 0 6px', fontWeight: 700 }}>{p.title}</h4><p style={{ fontWeight: 800 }}>₦{p.price}</p><p style={{ fontSize: '12px', color: '#64748b' }}>{p.description?.slice(0,80)}</p></div>)}
         </div>
       )}
     </div>

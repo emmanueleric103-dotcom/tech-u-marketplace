@@ -1,66 +1,48 @@
 'use client'
 export const dynamic = 'force-dynamic'
-'use client'
-import { useEffect, useState } from 'react'
-import { createClient } from '@/lib/supabase'
-import Link from 'next/link'
+import { useState, useEffect } from 'react'
+import { supabase } from '@/lib/supabase'
+
+type Product = { id: string; title: string; price: number; description: string; created_at: string }
 
 export default function HomePage() {
-  const [products, setProducts] = useState<any[]>([])
-  const [query, setQuery] = useState('')
+  const [products, setProducts] = useState<Product[]>([])
+  const [q, setQ] = useState('')
   const [loading, setLoading] = useState(true)
-  const supabase = createClient()
 
-  const fetchProducts = async (search = '') => {
+  async function fetchProducts(search = '') {
     setLoading(true)
-    let q = supabase.from('products').select('*').order('created_at', { ascending: false })
-    if (search) {
-      q = q.ilike('title', `%${search}%`)
-    }
-    const { data } = await q
-    setProducts(data || [])
+    let query = supabase.from('products').select('*').order('created_at', { ascending: false })
+    if (search) query = query.ilike('title', `%${search}%`)
+    const { data } = await query
+    setProducts((data as Product[]) || [])
     setLoading(false)
   }
 
   useEffect(() => { fetchProducts() }, [])
-  
-  useEffect(() => {
-    const t = setTimeout(() => fetchProducts(query), 400)
-    return () => clearTimeout(t)
-  }, [query])
 
   return (
     <div>
-      <div className="py-10">
-        <h1 className="text-4xl font-black tracking-tight">Buy and sell on campus</h1>
-        <p className="text-zinc-500 mt-2">Real listings from Supabase, not hardcoded demo data.</p>
-        <input 
-          value={query} 
-          onChange={e => setQuery(e.target.value)} 
-          placeholder="Search real products in DB (e.g. laptop, textbook)..." 
-          className="mt-6 max-w-lg"
-        />
+      <h1 style={{ fontSize: '28px', fontWeight: 800, marginBottom: '8px' }}>TECH-U Marketplace</h1>
+      <p style={{ color: '#64748b', marginBottom: '20px' }}>Real listings from Supabase • No fake iPhones</p>
+      <div style={{ display: 'flex', gap: '10px', marginBottom: '24px' }}>
+        <input value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e)=> e.key==='Enter' && fetchProducts(q)} placeholder="Search products..." style={{ flex: 1, padding: '12px 14px', border: '1px solid #e2e8f0', borderRadius: '10px' }} />
+        <button onClick={() => fetchProducts(q)} style={{ padding: '12px 20px', background: '#0f172a', color: 'white', borderRadius: '10px', border: 0, fontWeight: 600 }}>Search</button>
       </div>
-
-      {loading ? <p>Loading real listings...</p> : products.length === 0 ? (
-        <div className="border border-dashed rounded-2xl p-16 text-center mt-8">
-          <p className="text-xl font-semibold">No listings yet</p>
-          <p className="text-zinc-500 mt-1">Be the first to post. Go to Sell.</p>
-          <Link href="/sell" className="inline-block mt-4 bg-black text-white px-5 py-2 rounded-full">Create listing</Link>
+      {loading ? <p>Loading real products...</p> : products.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '64px 20px', background: 'white', borderRadius: '16px', border: '1px dashed #cbd5e1' }}>
+          <div style={{ fontSize: '36px', marginBottom: '12px' }}>📦</div>
+          <h3 style={{ margin: 0, fontWeight: 700 }}>No listings yet</h3>
+          <p style={{ color: '#64748b' }}>Be the first to post on TECH-U Marketplace</p>
         </div>
       ) : (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
-          {products.map(p => (
-            <Link key={p.id} href={`/product/${p.id}`} className="bg-white border rounded-2xl overflow-hidden hover:shadow-sm">
-              <div className="aspect-[4/3] bg-zinc-100 flex items-center justify-center text-xs text-zinc-400">
-                {p.images?.[0] ? <img src={p.images[0]} alt={p.title} className="w-full h-full object-cover" /> : 'No image'}
-              </div>
-              <div className="p-3">
-                <p className="font-medium truncate">{p.title}</p>
-                <p className="text-green-600 font-bold">₦{Number(p.price).toLocaleString()}</p>
-                <p className="text-xs text-zinc-500 truncate">{p.pickup_location}</p>
-              </div>
-            </Link>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '14px' }}>
+          {products.map((p) => (
+            <div key={p.id} style={{ background: 'white', padding: '14px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+              <h4 style={{ margin: '0 0 6px', fontWeight: 700 }}>{p.title}</h4>
+              <p style={{ margin: '0 0 6px', fontWeight: 800 }}>₦{p.price?.toLocaleString()}</p>
+              <p style={{ margin: 0, color: '#64748b', fontSize: '13px' }}>{p.description?.slice(0, 90)}</p>
+            </div>
           ))}
         </div>
       )}

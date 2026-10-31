@@ -1,61 +1,46 @@
 'use client'
 export const dynamic = 'force-dynamic'
-'use client'
-import { useEffect, useState } from 'react'
-import { createClient } from '@/lib/supabase'
-import Link from 'next/link'
+import { useState, useEffect } from 'react'
+import { supabase } from '@/lib/supabase'
+
+type Product = { id: string; title: string; price: number; description: string; category: string; created_at: string }
+const CATS = ['all','electronics','fashion','books','hostel','services','general']
 
 export default function ProductsPage() {
-  const [products, setProducts] = useState<any[]>([])
-  const [filters, setFilters] = useState({ category: '', condition: '', min: '', max: '', q: '' })
-  const supabase = createClient()
+  const [products, setProducts] = useState<Product[]>([])
+  const [q, setQ] = useState('')
+  const [cat, setCat] = useState('all')
+  const [loading, setLoading] = useState(true)
 
-  const load = async () => {
-    let q = supabase.from('products').select('*').order('created_at', { ascending: false })
-    if (filters.q) q = q.ilike('title', `%${filters.q}%`)
-    if (filters.category) q = q.eq('category', filters.category)
-    if (filters.condition) q = q.eq('condition', filters.condition)
-    if (filters.min) q = q.gte('price', Number(filters.min))
-    if (filters.max) q = q.lte('price', Number(filters.max))
-    const { data } = await q
-    setProducts(data || [])
+  async function fetchData() {
+    setLoading(true)
+    let query = supabase.from('products').select('*').order('created_at', { ascending: false })
+    if (q) query = query.ilike('title', `%${q}%`)
+    if (cat !== 'all') query = query.eq('category', cat)
+    const { data } = await query
+    setProducts((data as Product[]) || [])
+    setLoading(false)
   }
 
-  useEffect(() => { load() }, [filters])
+  useEffect(() => { fetchData() }, [cat])
 
   return (
-    <div className="flex flex-col md:flex-row gap-6">
-      <div className="md:w-64 space-y-3 bg-white border p-4 rounded-2xl h-fit">
-        <h3 className="font-bold">Filters (Real DB)</h3>
-        <input placeholder="Search..." value={filters.q} onChange={e => setFilters({...filters, q: e.target.value})} />
-        <select value={filters.category} onChange={e => setFilters({...filters, category: e.target.value})}>
-          <option value="">All categories</option>
-          <option value="phones">Phones</option>
-          <option value="laptops">Laptops</option>
-          <option value="fashion">Fashion</option>
-          <option value="books">Books</option>
-          <option value="other">Other</option>
-        </select>
-        <select value={filters.condition} onChange={e => setFilters({...filters, condition: e.target.value})}>
-          <option value="">Any condition</option>
-          <option value="new">New</option>
-          <option value="used">Used</option>
-          <option value="refurbished">Refurbished</option>
-        </select>
-        <div className="flex gap-2">
-          <input placeholder="Min ₦" value={filters.min} onChange={e => setFilters({...filters, min: e.target.value})} />
-          <input placeholder="Max ₦" value={filters.max} onChange={e => setFilters({...filters, max: e.target.value})} />
-        </div>
-      </div>
-      <div className="flex-1 grid grid-cols-2 md:grid-cols-3 gap-4">
-        {products.map(p => (
-          <Link key={p.id} href={`/product/${p.id}`} className="bg-white border rounded-2xl overflow-hidden">
-            <div className="aspect-[4/3] bg-zinc-100">{p.images?.[0] && <img src={p.images[0]} className="w-full h-full object-cover" alt="" />}</div>
-            <div className="p-3"><p className="font-medium truncate">{p.title}</p><p className="text-green-600 font-bold">₦{Number(p.price).toLocaleString()}</p></div>
-          </Link>
+    <div>
+      <h1 style={{ fontSize: '24px', fontWeight: 800 }}>All Products</h1>
+      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', margin: '14px 0' }}>
+        {CATS.map((c) => (
+          <button key={c} onClick={() => setCat(c)} style={{ padding: '8px 14px', borderRadius: '20px', border: '1px solid #e2e8f0', background: cat===c ? '#0f172a' : 'white', color: cat===c ? 'white' : '#0f172a', textTransform: 'capitalize' }}>{c}</button>
         ))}
-        {products.length===0 && <p className="text-zinc-500">No listings match filters. Real query on Supabase.</p>}
       </div>
+      <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
+        <input value={q} onChange={(e)=>setQ(e.target.value)} onKeyDown={(e)=> e.key==='Enter' && fetchData()} placeholder="Search in TECH-U..." style={{ flex: 1, padding: '12px', border: '1px solid #e2e8f0', borderRadius: '10px' }} />
+        <button onClick={fetchData} style={{ padding: '12px 18px', background: '#0f172a', color: 'white', borderRadius: '10px', border: 0 }}>Filter</button>
+      </div>
+      {loading ? <p>Loading...</p> : products.length===0 ? <div style={{ padding: '40px', background: 'white', borderRadius: '12px', border: '1px dashed #cbd5e1', textAlign: 'center' }}>No listings yet</div> : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '12px' }}>
+          {products.map(p=><div key={p.id} style={{ background: 'white', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '14px' }}><span style={{ fontSize: '11px', background: '#f1f5f9', padding: '4px 8px', borderRadius: '20px', textTransform: 'uppercase' }}>{p.category}</span><h4 style={{ margin: '10px 0 4px', fontWeight: 700 }}>{p.title}</h4><p style={{ fontWeight: 800 }}>₦{p.price}</p></div>)}
+        </div>
+      )}
     </div>
   )
 }

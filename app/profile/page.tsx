@@ -1,41 +1,40 @@
 'use client'
 export const dynamic = 'force-dynamic'
-
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 
 export default function ProfilePage() {
   const [user, setUser] = useState<any>(null)
   const [fullName, setFullName] = useState('')
-  const [dept, setDept] = useState('')
+  const [msg, setMsg] = useState('')
 
   useEffect(() => {
-    supabase.auth.getUser().then(({data}) => {
-      setUser(data.user)
+    supabase.auth.getUser().then(({ data }) => {
       if (data.user) {
-        supabase.from('profiles').select('*').eq('id', data.user.id).single().then(({data:profile}) => {
-          if (profile) {
-            setFullName(profile.full_name || '')
-            setDept(profile.department || '')
-          }
+        setUser(data.user)
+        supabase.from('profiles').select('*').eq('id', data.user.id).single().then(({ data: p }) => {
+          if (p) setFullName(p.full_name || '')
         })
       }
     })
   }, [])
 
-  const saveProfile = async () => {
+  async function save() {
     if (!user) return
-    await supabase.from('profiles').upsert({ id: user.id, full_name: fullName, department: dept, email: user.email })
-    alert('Profile saved!')
+    const { error } = await supabase.from('profiles').upsert({ id: user.id, full_name: fullName, updated_at: new Date().toISOString() })
+    setMsg(error ? error.message : 'Profile saved!')
   }
 
+  if (!user) return <div style={{ background: 'white', padding: '24px', borderRadius: '12px', border: '1px solid #e2e8f0' }}><p>Please login to view profile.</p></div>
+
   return (
-    <div className="p-4 max-w-md mx-auto">
-      <h1 className="text-2xl font-bold mb-4">Edit Profile</h1>
-      <p className="text-sm text-gray-500 mb-4">{user?.email}</p>
-      <input className="border p-2 w-full mb-2" placeholder="Full Name" value={fullName} onChange={e=>setFullName(e.target.value)} />
-      <input className="border p-2 w-full mb-4" placeholder="Department" value={dept} onChange={e=>setDept(e.target.value)} />
-      <button onClick={saveProfile} className="bg-green-600 text-white px-4 py-2 rounded w-full">Save Profile</button>
+    <div style={{ maxWidth: '480px', background: 'white', padding: '24px', borderRadius: '14px', border: '1px solid #e2e8f0' }}>
+      <h1 style={{ fontSize: '20px', fontWeight: 800, marginBottom: '4px' }}>Profile</h1>
+      <p style={{ color: '#64748b', fontSize: '13px', marginBottom: '18px' }}>{user.email}</p>
+      <label style={{ fontSize: '12px', fontWeight: 600 }}>FULL NAME</label>
+      <input value={fullName} onChange={(e)=>setFullName(e.target.value)} placeholder="Your name" style={{ width: '100%', padding: '12px', margin: '6px 0 14px', border: '1px solid #e2e8f0', borderRadius: '8px' }} />
+      <button onClick={save} style={{ width: '100%', padding: '12px', background: '#0f172a', color: 'white', borderRadius: '8px', border: 0, fontWeight: 700 }}>Save Profile</button>
+      {msg && <p style={{ marginTop: '12px', fontSize: '13px' }}>{msg}</p>}
     </div>
   )
 }

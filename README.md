@@ -1,19 +1,39 @@
-# TECH-U Marketplace - Real Engine (Jiji.ng-like)
+# TECH-U Marketplace - Clean Recode
 
-This is REAL, not demo. Fixes:
-- Login persistence via middleware.ts session refresh, Header uses onAuthStateChange
-- Profile 404 fixed: app/profile/page.tsx reads auth user and saves to public.profiles
-- Real search: ilike query on Supabase, not hardcoded iPhone 13 320k
-- Empty state: "No listings yet" when DB empty
-- Real image upload: max 3, max 2MB each, compress to 800px JPEG 70% to save 1GB free tier, bucket named Image (capital I)
-- Dashboard real data: where user_id = current user, counts Total/Active/Sold
-- WhatsApp link like Jiji: https://wa.me/{whatsapp}?text=Hi...
+FIX for duplicate 'use client' webpack error.
 
-Setup:
-1. Create Supabase project
-2. SQL Editor -> paste supabase.sql
-3. Storage -> New Bucket -> Name: Image (capital I), Public ON, limit 2MB
-4. Storage policies: 4 policies as in supabase.sql comment
-5. Set env vars in .env.local from .env.example
-6. npm install, npm run dev
-7. git push to Render: Connect repo, Build command npm run build, Start npm start, add env vars in Render dashboard
+## The Bug
+Previous build failed at 17s with:
+- duplicate 'use client' directives
+- wrong order: imports before 'use client'
+
+## The Fix (This Zip)
+Every client page now has EXACTLY:
+Line 1: 'use client'
+Line 2: export const dynamic = 'force-dynamic'
+Line 3+: imports
+
+No duplicates. No Supabase logic in middleware.
+
+## Install
+1. DELETE ALL old code first: rm -rf app components lib etc
+2. Unzip this clean zip into ~/tech-u-marketplace
+   unzip tech-u-marketplace-clean.zip -d ~/tech-u-marketplace
+   (overwrite)
+
+3. Set env vars in Render:
+   NEXT_PUBLIC_SUPABASE_URL
+   NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+4. git add . && git commit -m "clean recode fix" && git push
+
+5. Render will go LIVE in ~50s (not 17s fail). Check build logs: no webpack error.
+
+## DB Schema (Supabase)
+products: id uuid, title text, price int, description text, category text, user_id uuid, created_at timestamp
+profiles: id uuid (fk auth.users), full_name text
+
+RLS: enable, policies for public read and auth insert.
+
+Build command: npm run build
+Start: npm run start

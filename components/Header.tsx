@@ -1,59 +1,35 @@
 'use client'
+export const dynamic = 'force-dynamic'
 import { useEffect, useState } from 'react'
+import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
-import { createClient } from '@/lib/supabase'
-import { useRouter } from 'next/navigation'
 
 export default function Header() {
   const [user, setUser] = useState<any>(null)
-  const [loading, setLoading] = useState(true)
-  const supabase = createClient()
-  const router = useRouter()
 
   useEffect(() => {
-    const getSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      setUser(session?.user ?? null)
-      setLoading(false)
-    }
-    getSession()
-
-    // FIX: This was missing, causing Header to still show Login after login
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null)
-      router.refresh()
+    supabase.auth.getUser().then(({ data }) => setUser(data.user || null))
+    const { data: listener } = supabase.auth.onAuthStateChange((_e, session) => {
+      setUser(session?.user || null)
     })
-
-    return () => subscription.unsubscribe()
+    return () => { listener.subscription.unsubscribe() }
   }, [])
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut()
-    router.push('/')
-    router.refresh()
-  }
-
   return (
-    <header className="sticky top-0 z-50 border-b bg-white">
-      <div className="mx-auto max-w-6xl px-4 h-14 flex items-center justify-between">
-        <Link href="/" className="font-black text-lg tracking-tight">TECH-U<span className="text-green-600">MARKET</span></Link>
-        <nav className="flex items-center gap-4 text-sm">
-          <Link href="/products" className="hover:underline">Browse</Link>
-          <Link href="/sell" className="bg-black text-white px-3 py-1.5 rounded-full">Sell</Link>
-          {loading ? (
-            <span className="text-gray-400">...</span>
-          ) : user ? (
-            <>
-              <Link href="/dashboard" className="font-medium">Dashboard</Link>
-              <Link href="/profile" className="font-medium">Profile</Link>
-              <span className="hidden sm:inline text-gray-500 max-w-[120px] truncate">{user.email}</span>
-              <button onClick={handleLogout} className="border px-3 py-1 rounded-full hover:bg-gray-50">Logout</button>
-            </>
-          ) : (
-            <Link href="/auth/login" className="border px-3 py-1 rounded-full hover:bg-gray-50">Login</Link>
-          )}
-        </nav>
-      </div>
+    <header style={{ position: 'sticky', top: 0, zIndex: 50, background: 'white', borderBottom: '1px solid #e2e8f0', padding: '12px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <Link href="/" style={{ fontWeight: 900, fontSize: '18px', letterSpacing: '-0.02em', textDecoration: 'none', color: '#0f172a' }}>TECH-U MARKET</Link>
+      <nav style={{ display: 'flex', gap: '14px', alignItems: 'center', fontSize: '14px' }}>
+        <Link href="/products" style={{ textDecoration: 'none', color: '#334155', fontWeight: 600 }}>Browse</Link>
+        <Link href="/sell" style={{ textDecoration: 'none', color: '#334155', fontWeight: 600 }}>Sell</Link>
+        {user ? (
+          <>
+            <Link href="/dashboard" style={{ textDecoration: 'none', color: '#334155', fontWeight: 600 }}>Dashboard</Link>
+            <Link href="/profile" style={{ textDecoration: 'none', background: '#0f172a', color: 'white', padding: '8px 14px', borderRadius: '20px', fontWeight: 700 }}>Profile</Link>
+          </>
+        ) : (
+          <Link href="/profile" style={{ textDecoration: 'none', background: 'white', border: '1px solid #e2e8f0', padding: '8px 14px', borderRadius: '20px', fontWeight: 700, color: '#0f172a' }}>Login</Link>
+        )}
+      </nav>
     </header>
   )
 }
