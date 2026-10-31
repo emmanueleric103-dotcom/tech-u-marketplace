@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic'
 import { createServerSupabase } from '@/lib/supabase'
 import Link from 'next/link'
 
