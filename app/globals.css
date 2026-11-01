@@ -1,0 +1,7 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root { --bg: #fafafa; }
+body { background: var(--bg); font-family: Inter, system-ui, sans-serif; }
+a { text-underline-offset: 3px; }
