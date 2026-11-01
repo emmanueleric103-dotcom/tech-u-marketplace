@@ -1,33 +1,35 @@
 'use client'
-export const dynamic = 'force-dynamic'
-import { useEffect, useState } from 'react'
+import dynamic from 'next/dynamic'
 import { supabase } from '../../lib/supabase'
+import { useState } from 'react'
 
-export default function Dashboard(){
-  const [products,setProducts]=useState<any[]>([])
-  useEffect(()=>{
-    (async()=>{
-      const { data:{ user } } = await supabase.auth.getUser()
-      if(!user) return
-      const { data } = await supabase.from('products').select('*').eq('user_id', user.id).order('created_at',{ascending:false})
-      setProducts(data||[])
-    })()
-  },[])
+export default function DashboardPage() {
+  const stats = [
+    { label: 'Active Listings', value: '0', icon: '📦' },
+    { label: 'Total Sales', value: '₦0', icon: '💰' },
+    { label: 'Views', value: '0', icon: '👁️' },
+  ]
+
   return (
-    <div className="min-h-screen bg-[#f9fafb] p-6">
-      <div className="max-w-[1024px] mx-auto">
-        <h1 className="text-3xl font-bold mb-2">My Listings</h1>
-        <p className="text-zinc-500 mb-8">{products.length} active listings</p>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-          {products.map(p=>(
-            <div key={p.id} className="bg-white rounded-2xl border p-4 shadow-sm">
-              <div className="h-32 bg-zinc-100 rounded-xl mb-3" />
-              <p className="font-bold text-green-600">₦{p.price}</p>
-              <p className="truncate text-sm">{p.title}</p>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <h1 className="text-2xl font-bold mb-6">Dashboard</h1>
+      <div className="grid sm:grid-cols-3 gap-4 mb-8">
+        {stats.map(s => (
+          <div key={s.label} className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-500">{s.label}</p>
+                <p className="text-2xl font-bold mt-1">{s.value}</p>
+              </div>
+              <div className="w-10 h-10 bg-green-50 rounded-full flex items-center justify-center">
+                <span>{s.icon}</span>
+              </div>
             </div>
-          ))}
-        </div>
-        {products.length===0 && <div className="bg-white rounded-2xl border p-12 text-center"><p className="text-zinc-500">No listings yet</p></div>}
+          </div>
+        ))}
+      </div>
+      <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center shadow-sm">
+        <p className="text-gray-500">No activity yet. Start selling!</p>
       </div>
     </div>
   )

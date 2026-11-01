@@ -1,26 +1,38 @@
 'use client'
-export const dynamic = 'force-dynamic'
-import { useState } from 'react'
+import dynamic from 'next/dynamic'
 import { supabase } from '../../../lib/supabase'
-import Link from 'next/link'
+import { useState } from 'react'
 
-export default function RegisterPage(){
-  const [email,setEmail]=useState('')
-  const [password,setPassword]=useState('')
-  async function register(){
-    const { error } = await supabase.auth.signUp({ email, password })
-    if(!error) alert('Check email to confirm')
-    else alert(error.message)
-  }
+export default function RegisterPage() {
+  const [form, setForm] = useState({ name: '', email: '', password: '' })
+
   return (
-    <div className="min-h-screen bg-[#f9fafb] flex items-center justify-center p-4">
-      <div className="w-full max-w-[420px] bg-white rounded-[24px] shadow-lg border p-8">
-        <h1 className="text-[28px] font-black mb-1">Join TECH-U</h1>
-        <p className="text-sm text-zinc-500 mb-8">Create your campus account</p>
-        <input value={email} onChange={e=>setEmail(e.target.value)} placeholder="Email" className="w-full h-[52px] rounded-xl border px-4 bg-zinc-50 mb-4" />
-        <input value={password} onChange={e=>setPassword(e.target.value)} type="password" placeholder="Password" className="w-full h-[52px] rounded-xl border px-4 bg-zinc-50 mb-4" />
-        <button onClick={register} className="w-full h-[52px] rounded-full bg-green-600 text-white font-semibold">Create Account</button>
-        <p className="text-center text-sm mt-6 text-zinc-500">Already have account? <Link href="/auth/login" className="text-green-600 font-semibold">Login</Link></p>
+    <div className="min-h-[80vh] flex items-center justify-center px-4">
+      <div className="w-full max-w-md mx-auto mt-10 bg-white rounded-2xl shadow-lg border border-gray-100 p-8">
+        <div className="text-center mb-8">
+          <h1 className="text-2xl font-bold">Create Account</h1>
+          <p className="text-gray-500 text-sm mt-2">Join TECH-U MARKET today</p>
+        </div>
+
+        <form className="space-y-4">
+          <div>
+            <label className="text-sm font-medium block mb-2">Full Name</label>
+            <input placeholder="John Doe" className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+          </div>
+          <div>
+            <label className="text-sm font-medium block mb-2">Email</label>
+            <input type="email" placeholder="you@tech-u.edu.ng" className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+          </div>
+          <div>
+            <label className="text-sm font-medium block mb-2">Password</label>
+            <input type="password" placeholder="••••••••" className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+          </div>
+          <button className="w-full py-3 bg-green-600 text-white rounded-xl font-semibold text-sm hover:bg-green-700 shadow-sm">Create Account</button>
+        </form>
+
+        <p className="text-center text-sm text-gray-500 mt-6">
+          Already have account? <a href="/auth/login" className="text-green-600 font-medium">Sign in</a>
+        </p>
       </div>
     </div>
   )

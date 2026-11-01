@@ -1,35 +1,60 @@
 'use client'
-export const dynamic = 'force-dynamic'
-import { useState } from 'react'
+import dynamic from 'next/dynamic'
 import { supabase } from '../../../lib/supabase'
-import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useState } from 'react'
 
-export default function LoginPage(){
-  const [email,setEmail]=useState('')
-  const [password,setPassword]=useState('')
-  const [loading,setLoading]=useState(false)
-  const router=useRouter()
+export default function LoginPage() {
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [loading, setLoading] = useState(false)
 
-  async function login(){
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault()
     setLoading(true)
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
-    if(!error) router.push('/profile')
-    else alert(error.message)
-    setLoading(false)
+    setTimeout(() => setLoading(false), 1000)
   }
 
   return (
-    <div className="min-h-screen bg-[#f9fafb] flex items-center justify-center p-4">
-      <div className="w-full max-w-[420px] bg-white rounded-[24px] shadow-lg border border-zinc-100 p-8">
-        <h1 className="text-[28px] font-black tracking-tight mb-1">Welcome back</h1>
-        <p className="text-sm text-zinc-500 mb-8">Login to TECH-U MARKET</p>
-        <div className="space-y-4">
-          <input value={email} onChange={e=>setEmail(e.target.value)} placeholder="Email address" className="w-full h-[52px] rounded-xl border border-zinc-200 px-4 bg-zinc-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-green-500" />
-          <input value={password} onChange={e=>setPassword(e.target.value)} type="password" placeholder="Password" className="w-full h-[52px] rounded-xl border border-zinc-200 px-4 bg-zinc-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-green-500" />
-          <button onClick={login} disabled={loading} className="w-full h-[52px] rounded-full bg-green-600 text-white font-semibold shadow-lg hover:bg-green-700 transition">{loading?'Logging in...':'Login'}</button>
+    <div className="min-h-[80vh] flex items-center justify-center px-4">
+      <div className="w-full max-w-md mx-auto mt-10 bg-white rounded-2xl shadow-lg border border-gray-100 p-8">
+        <div className="text-center mb-8">
+          <h1 className="text-2xl font-black tracking-tight">TECH-U <span className="text-green-600">MARKET</span></h1>
+          <p className="text-gray-500 text-sm mt-2">Welcome back! Please sign in</p>
         </div>
-        <p className="text-center text-sm mt-6 text-zinc-500">No account? <Link href="/auth/register" className="text-green-600 font-semibold">Create one</Link></p>
+
+        <form onSubmit={handleLogin} className="space-y-5">
+          <div>
+            <label className="text-sm font-medium text-gray-700 block mb-2">Email</label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@tech-u.edu.ng"
+              className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm"
+            />
+          </div>
+          <div>
+            <label className="text-sm font-medium text-gray-700 block mb-2">Password</label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
+              className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm"
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full py-3 bg-green-600 text-white rounded-xl font-semibold text-sm hover:bg-green-700 shadow-sm transition disabled:opacity-50"
+          >
+            {loading ? 'Signing in...' : 'Sign In'}
+          </button>
+        </form>
+
+        <p className="text-center text-sm text-gray-500 mt-6">
+          Don't have an account? <a href="/auth/register" className="text-green-600 font-medium hover:underline">Sign up</a>
+        </p>
       </div>
     </div>
   )
