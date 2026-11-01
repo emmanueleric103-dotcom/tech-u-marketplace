@@ -1,23 +1,13 @@
-// lib/rateLimit.ts - FIXED - no MapIterator iteration
-type Entry = { count: number; resetAt: number }
-const store = new Map<string, Entry>()
-
-export function isRateLimited(key: string, max: number, windowMs: number): boolean {
+// FIXED: old code used for...of on Map that crashed on Termux node
+// Now uses forEach which is safe
+const hits = new Map<string, { count: number, time: number }>()
+export function rateLimit(ip: string, limit = 10, windowMs = 60000) {
   const now = Date.now()
-  const entry = store.get(key)
-  if (!entry || now > entry.resetAt) {
-    store.set(key, { count: 1, resetAt: now + windowMs })
-    return false
-  }
-  if (entry.count >= max) return true
-  entry.count++
-  return false
+  // cleanup old with forEach - FIX
+  hits.forEach((v, k) => { if (now - v.time > windowMs) hits.delete(k) })
+  const cur = hits.get(ip)
+  if (!cur) { hits.set(ip, { count: 1, time: now }); return true }
+  if (now - cur.time > windowMs) { hits.set(ip, { count: 1, time: now }); return true }
+  if (cur.count >= limit) return false
+  cur.count++; return true
 }
-
-// Cleanup without MapIterator iteration - use forEach
-setInterval(() => {
-  const now = Date.now()
-  store.forEach((v, k) => {
-    if (now > v.resetAt) store.delete(k)
-  })
-}, 30 * 60 * 1000)
