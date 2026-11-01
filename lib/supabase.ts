@@ -1,25 +1,26 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co';
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-anon-key';
+const url = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
-// Placeholder fallback prevents build crash when env not set
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export const supabase = createClient(url, anon)
 
-export type ListingStatus = 'pending' | 'approved' | 'rejected' | 'sold' | 'removed';
+export const supabaseAdmin = () => {
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+  return createClient(url, serviceKey, { auth: { persistSession: false } })
+}
 
-export interface Listing {
-  id: string;
-  title: string;
-  price: number;
-  category: string;
-  condition: 'New' | 'Used';
-  description: string;
-  location?: string;
-  whatsapp: string;
-  phone: string;
-  image_urls: string[];
-  status: ListingStatus;
-  created_at: string;
-  views?: number;
+export type Product = {
+  id: string
+  title: string
+  description: string
+  price: number
+  category: string
+  condition: string
+  seller_name: string
+  seller_phone: string
+  seller_whatsapp: string
+  images: string[]
+  status: 'pending' | 'approved' | 'rejected' | 'sold'
+  created_at: string
 }

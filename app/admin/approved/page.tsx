@@ -1,36 +1,38 @@
-'use client';
-export const dynamic = 'force-dynamic';
-import { useEffect, useState } from 'react';
-import { supabase } from '../../../lib/supabase';
+'use client'
+import { useEffect, useState } from 'react'
+import { supabase } from '@/lib/supabase'
 
-export default function ApprovedPage(){
-  const [items,setItems]=useState<any[]>([]);
-  const [loading,setLoading]=useState(true);
-  async function load(){ setLoading(true); const { data } = await supabase.from('listings').select('*').in('status',['approved','sold']).order('created_at',{ascending:false}); if(data) setItems(data); setLoading(false); }
-  useEffect(()=>{load();},[]);
-  async function markSold(id:string, to:string){ await supabase.from('listings').update({ status: to }).eq('id',id); load(); }
-  async function del(id:string){ if(confirm('Delete?')){ await supabase.from('listings').delete().eq('id',id); load(); } }
+export default function Approved() {
+  const [items, setItems] = useState<any[]>([])
+  const load = () => supabase.from('products').select('*').eq('status','approved').order('created_at',{ascending:false}).then(({data})=> setItems(data||[]))
+  useEffect(()=>{ load() },[])
 
-  if (loading) return <div className="card p-10 animate-pulse">Loading...</div>;
+  const markSold = async (id:string) => {
+    await supabase.from('products').update({ status: 'sold' }).eq('id', id)
+    load()
+  }
+  const del = async (id:string) => {
+    if(!confirm('Delete?')) return
+    await supabase.from('products').delete().eq('id', id)
+    load()
+  }
+
   return (
-    <div className="space-y-4">
-      <h1 className="text-[22px] font-black">Approved & Sold ({items.length})</h1>
-      <div className="grid gap-3">
-        {items.map(it=>(
-          <div key={it.id} className="card p-4 flex gap-4">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={it.image_urls?.[0]} alt="" className="w-20 h-20 rounded-xl object-cover bg-zinc-100" />
+    <div>
+      <h1 className="text-xl font-black">Approved • {items.length}</h1>
+      <div className="mt-4 grid gap-3">
+        {items.map(p=>(
+          <div key={p.id} className="tech-card p-3 flex gap-3 items-center">
+            <img src={p.images?.[0]} alt="" className="w-14 h-14 rounded-lg object-cover bg-zinc-100"/>
             <div className="flex-1">
-              <p className="font-bold truncate">{it.title} — ₦{Number(it.price).toLocaleString()} {it.status==='sold'&&<span className="ml-2 text-[10px] bg-zinc-900 text-white px-2 py-0.5 rounded-full">SOLD</span>}</p>
-              <div className="mt-2 flex gap-2 flex-wrap">
-                {it.status==='approved' ? <button onClick={()=>markSold(it.id,'sold')} className="h-8 px-3 rounded-full bg-zinc-900 text-white text-xs font-bold">Mark as Sold</button> : <button onClick={()=>markSold(it.id,'approved')} className="h-8 px-3 rounded-full bg-brand-600 text-white text-xs font-bold">Mark Available</button>}
-                <button onClick={()=>del(it.id)} className="h-8 px-3 rounded-full border bg-white text-xs font-bold">Delete</button>
-                <a href={`/products/${it.id}`} target="_blank" className="h-8 px-3 rounded-full border bg-white text-xs font-bold grid place-items-center">View</a>
-              </div>
+              <div className="font-semibold">{p.title} • ₦{p.price}</div>
+              <div className="text-xs text-zinc-500">{p.seller_name}</div>
             </div>
+            <button onClick={()=>markSold(p.id)} className="text-xs bg-black text-white px-3 py-1 rounded-full">Mark Sold</button>
+            <button onClick={()=>del(p.id)} className="text-xs text-red-600 underline">Del</button>
           </div>
         ))}
       </div>
     </div>
-  );
+  )
 }

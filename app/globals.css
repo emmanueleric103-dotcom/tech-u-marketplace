@@ -2,32 +2,8 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --brand: #16a34a;
-  --bg: #f8faf8;
-}
-
-* { -webkit-tap-highlight-color: transparent; }
-
-body {
-  background: var(--bg);
-  color: #111827;
-  font-family: ui-sans-system, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
-  overflow-x: clip;
-}
-
-.glass {
-  backdrop-filter: blur(12px);
-  background: rgba(255,255,255,0.9);
-}
-
-.card {
-  @apply bg-white rounded-2xl shadow-sm border border-zinc-100;
-}
-
-.btn-pill {
-  @apply rounded-full px-5 py-3 font-semibold transition active:scale-[0.98];
-}
-
-.scrollbar-none::-webkit-scrollbar { display: none; }
-.scrollbar-none { -ms-overflow-style: none; scrollbar-width: none; }
+:root { --tech: #16a34a; }
+body { @apply bg-zinc-50 text-zinc-900 antialiased; font-family: ui-sans-system, -apple-system, Segoe UI, Roboto, sans-serif; }
+.tech-card { @apply bg-white rounded-2xl border border-zinc-200 shadow-sm overflow-hidden; }
+.tech-btn { @apply bg-[#16a34a] hover:bg-[#15803d] text-white font-semibold px-5 py-3 rounded-xl transition; }
+.tech-input { @apply w-full border border-zinc-200 rounded-xl px-4 py-3 bg-white focus:outline-none focus:ring-2 focus:ring-[#16a34a]/30 focus:border-[#16a34a]; }

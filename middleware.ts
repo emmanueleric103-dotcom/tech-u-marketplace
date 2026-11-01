@@ -1,15 +1,14 @@
-import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server'
+import type { NextRequest } from 'next/server'
 
 export function middleware(req: NextRequest) {
-  const res = NextResponse.next();
-  // Basic security headers
-  res.headers.set('X-Frame-Options', 'DENY');
-  res.headers.set('X-Content-Type-Options', 'nosniff');
-  // Allow admin routes to check auth client side, but block obviously bad paths
-  return res;
+  if (req.nextUrl.pathname.startsWith('/admin') && !req.nextUrl.pathname.includes('/login')) {
+    const auth = req.cookies.get('techu_admin')?.value
+    if (auth !== '1') {
+      return NextResponse.redirect(new URL('/admin/login', req.url))
+    }
+  }
+  return NextResponse.next()
 }
 
-export const config = {
-  matcher: ['/admin/:path*']
-};
+export const config = { matcher: ['/admin/:path*'] }

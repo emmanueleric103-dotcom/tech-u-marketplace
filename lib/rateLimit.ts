@@ -1,33 +1,23 @@
-// Simple in-memory rate limit for spam protection
-// Max 3 posts per hour per IP - keeps costs low, works on Render
+// lib/rateLimit.ts - FIXED - no MapIterator iteration
+type Entry = { count: number; resetAt: number }
+const store = new Map<string, Entry>()
 
-type Entry = { count: number; resetAt: number };
-const store = new Map<string, Entry>();
-
-export function checkRateLimit(ip: string, limit = 3, windowMs = 60 * 60 * 1000) {
-  const now = Date.now();
-  const entry = store.get(ip);
-
+export function isRateLimited(key: string, max: number, windowMs: number): boolean {
+  const now = Date.now()
+  const entry = store.get(key)
   if (!entry || now > entry.resetAt) {
-    store.set(ip, { count: 1, resetAt: now + windowMs });
-    return { allowed: true, remaining: limit - 1, resetAt: now + windowMs };
+    store.set(key, { count: 1, resetAt: now + windowMs })
+    return false
   }
-
-  if (entry.count >= limit) {
-    return { allowed: false, remaining: 0, resetAt: entry.resetAt };
-  }
-
-  entry.count++;
-  store.set(ip, entry);
-  return { allowed: true, remaining: limit - entry.count, resetAt: entry.resetAt };
+  if (entry.count >= max) return true
+  entry.count++
+  return false
 }
 
-// Cleanup every 30 mins
-if (typeof setInterval !== 'undefined') {
-  setInterval(() => {
-    const now = Date.now();
-    for (const [k, v] of store.entries()) {
-      if (now > v.resetAt) store.delete(k);
-    }
-  }, 30 * 60 * 1000);
-}
+// Cleanup without MapIterator iteration - use forEach
+setInterval(() => {
+  const now = Date.now()
+  store.forEach((v, k) => {
+    if (now > v.resetAt) store.delete(k)
+  })
+}, 30 * 60 * 1000)
