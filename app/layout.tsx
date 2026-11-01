@@ -1,25 +1,21 @@
-import type { Metadata } from "next";
-import "./globals.css";
-import Header from "@/components/Header";
+import './globals.css'
+import Header from '../components/Header'
 
-export const metadata: Metadata = {
-  title: "TECH-U Marketplace - Buy & Sell on Campus",
-  description: "Official marketplace for Technical University Ibadan students",
-};
+export const metadata = {
+  title: 'TECH-U MARKET',
+  description: 'Official campus marketplace for TECH-U students',
+}
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className="bg-[#f5f5f5] text-zinc-900 antialiased">
+      <body className="bg-[#f5f7f5] min-h-screen text-zinc-900 antialiased">
         <Header />
-        <main className="min-h-screen">{children}</main>
-        <footer className="bg-white border-t mt-16 py-10">
-          <div className="max-w-[1280px] mx-auto px-4 text-sm text-zinc-500 flex justify-between">
-            <span>© 2025 TECH-U Marketplace</span>
-            <span>Built for TECH-U Ibadan • Jiji-style Edition</span>
-          </div>
+        <main>{children}</main>
+        <footer className="mt-16 border-t bg-white py-8 text-center text-sm text-zinc-500">
+          © 2026 TECH-U MARKET • Built for campus trade
         </footer>
       </body>
     </html>
-  );
+  )
 }

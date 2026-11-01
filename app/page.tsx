@@ -3,131 +3,98 @@ export const dynamic = 'force-dynamic'
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { supabase } from '@/lib/supabase'
-
-const CATEGORIES = [
-  { name: 'Electronics', emoji: '📱', count: '1,204' },
-  { name: 'Fashion', emoji: '👕', count: '892' },
-  { name: 'Books', emoji: '📚', count: '445' },
-  { name: 'Furniture', emoji: '🪑', count: '321' },
-  { name: 'Hostel Items', emoji: '🛏️', count: '210' },
-  { name: 'Services', emoji: '🔧', count: '156' },
-]
+import { createClient } from '../lib/supabase'
 
 type Product = {
   id: string
   title: string
   price: number
   category: string
-  location: string
-  created_at: string
+  description: string
   image_url?: string
+  created_at: string
 }
+
+const CATEGORIES = ['All', 'Books', 'Electronics', 'Fashion', 'Hostel Essentials', 'Services']
 
 export default function HomePage() {
   const [products, setProducts] = useState<Product[]>([])
-  const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
+  const [activeCat, setActiveCat] = useState('All')
+  const [loading, setLoading] = useState(true)
+  const supabase = createClient()
 
   useEffect(() => {
     async function fetchProducts() {
       setLoading(true)
-      const { data, error } = await supabase.from('products').select('*').order('created_at', { ascending: false }).limit(24)
+      const { data, error } = await supabase.from('products').select('*').order('created_at', { ascending: false })
       if (!error && data) setProducts(data as Product[])
       setLoading(false)
     }
     fetchProducts()
   }, [])
 
-  const filtered = products.filter(p => p.title.toLowerCase().includes(search.toLowerCase()))
+  const filtered = products.filter(p => {
+    const matchSearch = p.title.toLowerCase().includes(search.toLowerCase())
+    const matchCat = activeCat === 'All' || p.category === activeCat
+    return matchSearch && matchCat
+  })
 
   return (
-    <div className="max-w-[1280px] mx-auto px-4 py-6">
-      {/* Hero - Jiji Style */}
-      <div className="bg-white rounded-[16px] border shadow-sm p-6 md:p-10 mb-6">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="flex-1">
-            <h1 className="text-[32px] md:text-[44px] font-extrabold leading-[0.95] tracking-tight">
-              Find anything in <span className="text-[#16a34a]">TECH-U</span>
-            </h1>
-            <p className="text-zinc-500 mt-3 text-[15px] max-w-[520px]">
-              Buy and sell everything from used phones to hostel furniture. Trusted by 3,000+ TECH-U students.
-            </p>
-            <div className="mt-6 flex gap-2 max-w-[560px]">
-              <div className="flex-1 relative">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400">⌕</span>
-                <input
-                  value={search}
-                  onChange={e => setSearch(e.target.value)}
-                  placeholder="I am looking for..."
-                  className="w-full h-[48px] pl-10 pr-4 bg-[#f3f4f6] rounded-full border border-transparent focus:border-[#16a34a] focus:bg-white outline-none text-[15px]"
-                />
-              </div>
-              <button className="h-[48px] px-7 bg-[#16a34a] hover:bg-[#15803d] text-white font-semibold rounded-full text-[15px]">
-                Search
-              </button>
-            </div>
+    <div className="mx-auto max-w-[1200px] px-4 py-6">
+      {/* Hero Search */}
+      <div className="rounded-[24px] bg-white border shadow-sm p-6 md:p-8">
+        <h1 className="text-[28px] md:text-[40px] font-black tracking-tight leading-none">Everything for TECH-U life, <span className="text-[#16a34a]">in one place.</span></h1>
+        <p className="mt-3 text-zinc-500 max-w-[560px]">Buy and sell from verified students. No scams, no fake iPhone posts. Just campus essentials.</p>
+        <div className="mt-6 flex gap-2">
+          <div className="flex-1 relative">
+            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400">⌕</span>
+            <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search books, gadgets, room items..." className="w-full h-[52px] pl-11 pr-4 rounded-full border bg-[#f8faf8] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#16a34a]/20 focus:border-[#16a34a] transition-all" />
           </div>
-          <Link href="/sell" className="hidden md:flex h-[48px] px-6 items-center justify-center bg-black text-white rounded-full font-semibold text-[14px] hover:bg-zinc-800">
-            + Sell now — free
-          </Link>
+          <Link href="/sell" className="hidden md:grid h-[52px] px-7 rounded-full bg-[#16a34a] text-white font-semibold place-items-center hover:bg-[#15803d] transition">Sell</Link>
         </div>
-
-        <div className="grid grid-cols-3 md:grid-cols-6 gap-3 mt-8">
+        <div className="mt-5 flex gap-2 overflow-auto scrollbar-none">
           {CATEGORIES.map(cat => (
-            <div key={cat.name} className="bg-[#fafafa] hover:bg-white border hover:shadow-sm rounded-[14px] p-4 cursor-pointer transition-all group">
-              <div className="text-[24px]">{cat.emoji}</div>
-              <div className="font-semibold text-[13px] mt-2 group-hover:text-[#16a34a]">{cat.name}</div>
-              <div className="text-[11px] text-zinc-400 mt-0.5">{cat.count} ads</div>
-            </div>
+            <button key={cat} onClick={()=>setActiveCat(cat)} className={`whitespace-nowrap rounded-full border px-4 h-9 text-sm font-medium transition ${activeCat===cat ? 'bg-[#16a34a] text-white border-[#16a34a]' : 'bg-white hover:bg-zinc-50'}`}>{cat}</button>
           ))}
         </div>
       </div>
 
-      {/* Product Grid */}
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="font-bold text-[18px]">Trending in TECH-U</h2>
-        <span className="text-[12px] text-zinc-500 bg-white border px-3 py-1 rounded-full">{filtered.length} items</span>
-      </div>
+      {/* Grid */}
+      <div className="mt-8">
+        <div className="flex items-center justify-between">
+          <h2 className="font-bold text-lg">{activeCat} • {filtered.length} items</h2>
+          <Link href="/products" className="text-sm font-semibold text-[#16a34a] hover:underline">View all →</Link>
+        </div>
 
-      {loading ? (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {[...Array(8)].map((_, i) => (
-            <div key={i} className="bg-white rounded-[14px] border p-3 animate-pulse">
-              <div className="h-[140px] bg-zinc-100 rounded-[10px]" />
-              <div className="h-4 bg-zinc-100 rounded mt-3 w-3/4" />
-              <div className="h-3 bg-zinc-100 rounded mt-2 w-1/2" />
-            </div>
-          ))}
-        </div>
-      ) : filtered.length === 0 ? (
-        <div className="bg-white rounded-[20px] border shadow-sm py-20 px-6 text-center">
-          <div className="w-[88px] h-[88px] mx-auto rounded-full bg-[#dcfce7] flex items-center justify-center text-[36px]">📦</div>
-          <h3 className="font-bold text-[20px] mt-5">No products yet</h3>
-          <p className="text-zinc-500 text-[14px] mt-2 max-w-[360px] mx-auto">
-            Be the first to sell on TECH-U Marketplace. Post your item in 30 seconds and reach thousands of students.
-          </p>
-          <Link href="/sell" className="inline-flex mt-6 h-[44px] px-7 bg-[#16a34a] text-white rounded-full font-semibold items-center hover:bg-[#15803d]">
-            Sell your first item
-          </Link>
-        </div>
-      ) : (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {filtered.map(p => (
-            <div key={p.id} className="bg-white rounded-[14px] border shadow-sm hover:shadow-md transition-shadow overflow-hidden group">
-              <div className="h-[160px] bg-[#f9fafb] relative">
-                {p.image_url ? <img src={p.image_url} alt={p.title} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-zinc-300 text-[32px]">🖼️</div>}
-                <span className="absolute top-2 left-2 text-[10px] font-bold bg-black/70 text-white px-2 py-1 rounded-full">{p.category}</span>
+        {loading ? (
+          <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
+            {[...Array(8)].map((_,i)=>(<div key={i} className="rounded-2xl bg-white border shadow-sm p-3 animate-pulse"><div className="aspect-square rounded-xl bg-zinc-100"/><div className="mt-3 h-4 bg-zinc-100 rounded"/><div className="mt-2 h-3 w-2/3 bg-zinc-100 rounded"/></div>))}
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="mt-8 rounded-[20px] border-2 border-dashed bg-white p-12 text-center">
+            <div className="mx-auto w-12 h-12 rounded-full bg-[#f0fdf4] grid place-items-center text-[#16a34a] text-xl">◍</div>
+            <h3 className="mt-4 font-bold text-lg">No listings yet</h3>
+            <p className="mt-1 text-sm text-zinc-500 max-w-[360px] mx-auto">This is real Supabase data — no fake iPhone, no 404. Be the first to list something for TECH-U.</p>
+            <Link href="/sell" className="mt-5 inline-flex h-10 px-5 rounded-full bg-[#16a34a] text-white text-sm font-semibold items-center hover:bg-[#15803d]">List an item</Link>
+          </div>
+        ) : (
+          <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
+            {filtered.map(p=>(
+              <div key={p.id} className="rounded-2xl bg-white border shadow-sm overflow-hidden hover:shadow-md transition group">
+                <div className="aspect-[4/3] bg-zinc-50 overflow-hidden">
+                  {p.image_url ? <img src={p.image_url} alt={p.title} className="w-full h-full object-cover group-hover:scale-[1.03] transition" /> : <div className="w-full h-full grid place-items-center text-zinc-300 text-2xl">Image</div>}
+                </div>
+                <div className="p-3">
+                  <h3 className="font-semibold leading-tight line-clamp-2 text-[14px]">{p.title}</h3>
+                  <p className="mt-1 font-black text-[#16a34a]">₦{Number(p.price).toLocaleString()}</p>
+                  <p className="mt-1 text-[11px] text-zinc-500 uppercase tracking-wide">{p.category}</p>
+                </div>
               </div>
-              <div className="p-3">
-                <div className="font-bold text-[#16a34a] text-[16px]">₦{Number(p.price).toLocaleString()}</div>
-                <div className="font-medium text-[13px] leading-tight mt-1 line-clamp-2">{p.title}</div>
-                <div className="text-[11px] text-zinc-500 mt-1">{p.location || 'TECH-U Campus'}</div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   )
 }

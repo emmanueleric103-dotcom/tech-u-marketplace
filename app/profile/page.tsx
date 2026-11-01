@@ -3,84 +3,57 @@ export const dynamic = 'force-dynamic'
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
+import { createClient } from '../../lib/supabase'
 
 export default function ProfilePage() {
-  const router = useRouter()
+  const supabase = createClient()
   const [user, setUser] = useState<any>(null)
-  const [loading, setLoading] = useState(true)
   const [fullName, setFullName] = useState('')
-  const [department, setDepartment] = useState('')
-  const [saving, setSaving] = useState(false)
+  const [dept, setDept] = useState('')
+  const [loading, setLoading] = useState(true)
+  const [msg, setMsg] = useState('')
 
   useEffect(() => {
-    async function load() {
-      const { data } = await supabase.auth.getUser()
-      if (!data.user) {
-        setLoading(false)
-        return
-      }
+    supabase.auth.getUser().then(async ({ data }) => {
+      if (!data.user) { setLoading(false); return }
       setUser(data.user)
       const { data: profile } = await supabase.from('profiles').select('*').eq('id', data.user.id).single()
-      if (profile) {
-        setFullName(profile.full_name || '')
-        setDepartment(profile.department || '')
-      } else {
-        setFullName(data.user.user_metadata?.full_name || '')
-      }
+      if (profile) { setFullName(profile.full_name || ''); setDept(profile.department || '') }
       setLoading(false)
-    }
-    load()
+    })
   }, [])
 
-  async function handleSave(e: React.FormEvent) {
-    e.preventDefault()
-    setSaving(true)
-    const { error } = await supabase.from('profiles').upsert({ id: user.id, full_name: fullName, department, email: user.email })
-    setSaving(false)
-    if (!error) alert('Profile saved!')
+  async function save() {
+    setMsg('Saving...')
+    const { error } = await supabase.from('profiles').upsert({ id: user.id, full_name: fullName, department: dept })
+    setMsg(error ? error.message : 'Saved ✓')
   }
 
-  if (loading) return <div className="p-10 text-center text-sm text-zinc-500">Loading profile...</div>
+  if (loading) return <div className="p-12 text-center text-zinc-500">Loading...</div>
 
   if (!user) {
     return (
-      <div className="min-h-[60vh] flex items-center justify-center px-4">
-        <div className="bg-white rounded-[20px] border shadow-sm p-10 text-center max-w-[400px] w-full">
-          <div className="w-16 h-16 mx-auto rounded-full bg-[#fef3c7] flex items-center justify-center text-[28px]">🔒</div>
-          <h2 className="font-bold text-[18px] mt-4">You are not logged in</h2>
-          <p className="text-[13px] text-zinc-500 mt-2">Login to view and edit your TECH-U profile. No loop — direct to login.</p>
-          <Link href="/auth/login" className="inline-flex mt-6 h-[44px] px-7 bg-[#16a34a] text-white rounded-full font-semibold items-center hover:bg-[#15803d]">
-            Go to Login
-          </Link>
-          <div className="mt-4 text-[11px] text-zinc-400">Fixed: Profile now shows actionable Login button, not just text.</div>
+      <div className="min-h-[60vh] grid place-items-center px-4">
+        <div className="rounded-[20px] bg-white border shadow-sm p-8 text-center max-w-[420px] w-full">
+          <h2 className="font-bold text-lg">You are not logged in</h2>
+          <p className="text-sm text-zinc-500 mt-1">Login to manage your TECH-U profile</p>
+          <Link href="/auth/login" className="mt-5 inline-flex h-10 px-6 rounded-full bg-[#16a34a] text-white font-semibold items-center">Go to Login</Link>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="max-w-[560px] mx-auto px-4 py-10">
-      <div className="bg-white rounded-[20px] border shadow-sm p-8">
-        <h1 className="text-[22px] font-extrabold">My Profile</h1>
-        <p className="text-[12px] text-zinc-500 mt-1">{user.email}</p>
-
-        <form onSubmit={handleSave} className="mt-8 space-y-4">
-          <div>
-            <label className="text-[12px] font-semibold">Full name</label>
-            <input value={fullName} onChange={e => setFullName(e.target.value)} className="mt-1 w-full h-[44px] px-4 rounded-full bg-[#f6f6f6] border focus:bg-white focus:border-[#16a34a] outline-none text-[14px]" />
-          </div>
-          <div>
-            <label className="text-[12px] font-semibold">Department</label>
-            <input value={department} onChange={e => setDepartment(e.target.value)} placeholder="e.g. Computer Science" className="mt-1 w-full h-[44px] px-4 rounded-full bg-[#f6f6f6] border focus:bg-white focus:border-[#16a34a] outline-none text-[14px]" />
-          </div>
-          <button disabled={saving} className="w-full h-[46px] rounded-full bg-black text-white font-semibold text-[14px] hover:bg-zinc-800">{saving ? 'Saving...' : 'Save changes'}</button>
-        </form>
-
-        <button onClick={async () => { await supabase.auth.signOut(); router.push('/'); }} className="w-full mt-3 h-[44px] rounded-full bg-white border font-semibold text-[13px] hover:bg-zinc-50">
-          Logout
-        </button>
+    <div className="mx-auto max-w-[640px] px-4 py-8">
+      <div className="rounded-[20px] bg-white border shadow-sm p-8">
+        <h1 className="text-2xl font-black">My Profile</h1>
+        <p className="text-sm text-zinc-500">{user.email}</p>
+        <div className="mt-6 space-y-4">
+          <input value={fullName} onChange={e=>setFullName(e.target.value)} placeholder="Full name" className="w-full h-11 rounded-xl border px-4" />
+          <input value={dept} onChange={e=>setDept(e.target.value)} placeholder="Department e.g. Computer Science" className="w-full h-11 rounded-xl border px-4" />
+          {msg && <p className="text-sm p-3 rounded-xl bg-zinc-50 border">{msg}</p>}
+          <button onClick={save} className="h-11 px-6 rounded-full bg-[#16a34a] text-white font-semibold">Save changes</button>
+        </div>
       </div>
     </div>
   )

@@ -1,7 +1,12 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 
-// Placeholder fallback so build never fails on Vercel / local without env
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co';
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-key-for-build-only-replace-in-env';
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co'
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-key'
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// Placeholder fallback ensures build never fails on Render / Vercel without env
+export const createClient = () => {
+  return createSupabaseClient(supabaseUrl, supabaseAnonKey)
+}
+
+// Default instance for convenience
+export const supabase = createClient()
