@@ -1,103 +1,58 @@
-'use client'
-import { useEffect, useState } from 'react'
-import { supabase } from '../lib/supabase'
+"use client"
 export const dynamic = 'force-dynamic'
+import { useEffect, useState } from 'react'
+import Link from 'next/link'
+import { supabase } from '../lib/supabase'
+
+const cats = [{id:'all',label:'All',icon:'🛍️'},{id:'electronics',label:'Electronics',icon:'📱'},{id:'fashion',label:'Fashion',icon:'👕'},{id:'books',label:'Books',icon:'📚'},{id:'hostel',label:'Hostel',icon:'🛏️'},{id:'accessories',label:'Accessories',icon:'⌚'}]
 
 export default function Home(){
-  const [products,setProducts] = useState<any[]>([])
-  const [loading,setLoading] = useState(true)
-  const [cat,setCat] = useState('All')
-  const cats = ['All','Phones','Laptops','Accessories','Gadgets']
+  const [products,setProducts]=useState<any[]>([])
+  const [q,setQ]=useState('')
+  const [cat,setCat]=useState('all')
+  const [loading,setLoading]=useState(true)
 
   useEffect(()=>{
-    (async()=>{
-      const { data } = await supabase.from('products').select('*').order('created_at',{ascending:false})
-      setProducts(data||[])
+    const load=async()=>{
+      setLoading(true)
+      // FIXED: only approved products show - pending needs admin approval first
+      const {data} = await supabase.from('products').select('*').eq('status','approved').order('created_at',{ascending:false}).limit(50)
+      if(data) setProducts(data)
       setLoading(false)
-    })()
+    }
+    load()
   },[])
 
-  const filtered = cat==='All' ? products : products.filter(p=>p.category===cat)
+  const filtered = products.filter(p=>{
+    const matchQ = !q || p.title?.toLowerCase().includes(q.toLowerCase())
+    const matchCat = cat==='all' || p.category===cat || p.category?.toLowerCase()===cat
+    return matchQ && matchCat
+  })
 
-  return (
-    <div className="min-h-screen bg-[#F8FBFF] dark:bg-[#020617] text-slate-900 dark:text-slate-100">
-      {/* MESH GRADIENT HERO */}
-      <div className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-emerald-200 via-cyan-100 to-violet-200 dark:from-emerald-950 dark:via-slate-900 dark:to-violet-950 opacity-80" />
-        <div className="absolute -top-[200px] -right-[200px] w-[600px] h-[600px] bg-emerald-400/30 rounded-full blur-[100px]" />
-        <div className="absolute -bottom-[200px] -left-[200px] w-[600px] h-[600px] bg-cyan-400/30 rounded-full blur-[100px]" />
-        <div className="relative max-w-[1280px] mx-auto px-6 py-14 md:py-20">
-          <div className="flex flex-wrap gap-2 mb-6">
-            <span className="px-3 py-1 rounded-full bg-white dark:bg-slate-800 border text-[11px] font-bold tracking-widest uppercase">🇳🇬 Lagos • Trusted Sellers</span>
-            <span className="px-3 py-1 rounded-full bg-emerald-500 text-white text-[11px] font-bold">Jiji-Level Design</span>
-          </div>
-          <h1 className="text-[40px] md:text-[64px] font-black tracking-[-0.03em] leading-[0.9] max-w-[720px]">
-            Tech that sells itself.
-            <span className="block text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 to-cyan-600"> Expert, not simple.</span>
-          </h1>
-          <div className="flex gap-6 mt-8">
-            <div><div className="text-[28px] font-black">{products.length}+</div><div className="text-[11px] uppercase tracking-widest text-slate-500">Active Listings</div></div>
-            <div className="w-px bg-slate-200 dark:bg-slate-800" />
-            <div><div className="text-[28px] font-black">4.9/5</div><div className="text-[11px] uppercase tracking-widest text-slate-500">Seller Rating</div></div>
-            <div className="w-px bg-slate-200 dark:bg-slate-800" />
-            <div><div className="text-[28px] font-black">Same-day</div><div className="text-[11px] uppercase tracking-widest text-slate-500">Delivery Lagos</div></div>
-          </div>
-          {/* Trust bar */}
-          <div className="mt-10 flex flex-wrap gap-3 text-[12px] text-slate-600 dark:text-slate-400">
-            <span className="flex items-center gap-1.5"><span className="w-2 h-2 bg-emerald-500 rounded-full"/>Verified sellers</span>
-            <span className="flex items-center gap-1.5"><span className="w-2 h-2 bg-emerald-500 rounded-full"/>Escrow payment</span>
-            <span className="flex items-center gap-1.5"><span className="w-2 h-2 bg-emerald-500 rounded-full"/>Image bucket: Image</span>
-          </div>
-        </div>
-      </div>
-
-      <div className="max-w-[1280px] mx-auto px-6 py-8">
-        {/* Category pills with icons */}
-        <div className="flex gap-2 overflow-x-auto pb-4 -mx-6 px-6 scrollbar-none">
-          {cats.map(c=>(
-            <button key={c} onClick={()=>setCat(c)} className={`whitespace-nowrap px-5 h-[40px] rounded-full border text-[14px] font-semibold transition-all ${cat===c?'bg-slate-900 text-white dark:bg-white dark:text-black border-slate-900 scale-105 shadow-lg':'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:scale-[1.02]'}`}>
-              {c==='All'?'◍':c==='Phones'?'◐':c==='Laptops'?'◑':'◒'} {c}
-            </button>
-          ))}
-        </div>
-
-        {/* Grid */}
-        {loading ? (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {Array.from({length:8}).map((_,i)=>(
-              <div key={i} className="rounded-[20px] bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-3 animate-pulse">
-                <div className="aspect-[4/3] rounded-[14px] bg-slate-100 dark:bg-slate-800 shimmer" />
-                <div className="h-4 bg-slate-100 dark:bg-slate-800 rounded mt-3 w-3/4" />
-                <div className="h-3 bg-slate-100 dark:bg-slate-800 rounded mt-2 w-1/2" />
-              </div>
-            ))}
-          </div>
-        ) : filtered.length===0 ? (
-          <div className="py-24 text-center">
-            <div className="w-24 h-24 mx-auto rounded-[24px] bg-slate-100 dark:bg-slate-900 grid place-items-center text-3xl">◍</div>
-            <p className="mt-4 font-bold text-lg">No {cat} yet</p>
-            <p className="text-sm text-slate-500">Post first product and it appears here instantly with image</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-5">
-            {filtered.map(p=>(
-              <div key={p.id} className="group rounded-[20px] bg-white dark:bg-[#0F172A] border border-slate-100 dark:border-slate-800 overflow-hidden hover:shadow-[0_20px_40px_-20px_rgba(0,0,0,0.2)] transition-all duration-300 hover:-translate-y-1">
-                <div className="relative aspect-[4/3] overflow-hidden bg-slate-50 dark:bg-slate-900">
-                  <img src={p.image_url || p.images?.[0]} alt={p.title} className="w-full h-full object-cover group-hover:scale-105 transition duration-500" />
-                  <div className="absolute top-2 left-2 px-2 py-1 rounded-full bg-white/90 dark:bg-black/60 text-[10px] font-bold uppercase tracking-widest">{p.category}</div>
-                  <div className="absolute top-2 right-2 w-7 h-7 rounded-full bg-white/90 dark:bg-black/60 grid place-items-center">♡</div>
-                </div>
-                <div className="p-3.5">
-                  <div className="font-semibold leading-tight line-clamp-2">{p.title}</div>
-                  <div className="mt-1 font-black text-emerald-600">₦{Number(p.price).toLocaleString()}</div>
-                  <div className="mt-1 flex items-center gap-1 text-[11px] text-slate-500"><span>●</span>{p.location} • {p.seller_name || 'Verified'}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+  return <div className="pt-6">
+    <div className="relative overflow-hidden rounded-[28px] bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50 dark:from-slate-900 dark:via-emerald-950/20 dark:to-slate-900 border border-green-100 dark:border-slate-800 p-6 md:p-10">
+      <h1 className="text-3xl md:text-5xl font-black tracking-tight leading-[0.9]">Campus <span className="bg-gradient-to-br from-[#16a34a] to-emerald-600 bg-clip-text text-transparent">Marketplace</span><br/>Built for TECH-U</h1>
+      <p className="mt-3 text-sm opacity-70 max-w-xl">Buy & sell without buyer accounts. Sellers post in 30s, admin verifies, buyers WhatsApp directly. No scam.</p>
+      <div className="mt-6 max-w-2xl flex items-center gap-2 bg-white dark:bg-slate-900 rounded-2xl shadow-xl border p-2">
+        <span className="pl-3">🔍</span>
+        <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Search Car, Smart watch..." className="flex-1 outline-none bg-transparent py-2 text-sm"/>
+        <Link href="/sell" className="bg-[#16a34a] text-white px-5 py-2.5 rounded-xl font-bold">Sell</Link>
       </div>
     </div>
-  )
-}
 
+    <div className="mt-5 flex gap-2 overflow-x-auto scrollbar-hide pb-2">
+      {cats.map(c=><button key={c.id} onClick={()=>setCat(c.id)} className={`whitespace-nowrap px-4 py-2.5 rounded-full border font-bold text-sm transition ${cat===c.id?'bg-[#16a34a] text-white border-[#16a34a] shadow':'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700'}`}>{c.icon} {c.label}</button>)}
+    </div>
+
+    <div className="mt-5 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+      {loading? Array.from({length:6}).map((_,i)=><div key={i} className="rounded-[20px] bg-white dark:bg-slate-800 border p-3"><div className="h-32 bg-slate-100 dark:bg-slate-700 animate-pulse rounded-xl"/><div className="h-4 bg-slate-100 dark:bg-slate-700 animate-pulse rounded mt-3"/><div className="h-4 bg-slate-100 dark:bg-slate-700 animate-pulse rounded mt-2 w-2/3"/></div>)
+      : filtered.length===0? <div className="col-span-full py-16 text-center bg-white dark:bg-slate-800 rounded-[20px] border"><div className="text-5xl">🛒</div><p className="mt-3 font-bold">No approved listings yet</p><p className="text-xs opacity-60">Pending products need admin approval at /admin/pending</p><Link href="/sell" className="inline-block mt-4 bg-[#16a34a] text-white px-6 py-2.5 rounded-full font-bold">Sell now</Link></div>
+      : filtered.map(p=><Link key={p.id} href={`/products/${p.id}`} className="group rounded-[20px] overflow-hidden bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:shadow-xl hover:-translate-y-1 transition-all cursor-pointer">
+        <div className="relative aspect-[4/3] overflow-hidden bg-slate-100 dark:bg-slate-700"><img src={p.images?.[0]||p.image_url||''} alt={p.title} className="w-full h-full object-cover group-hover:scale-105 transition duration-500"/><div className="absolute top-2 left-2 text-[10px] font-black px-2 py-1 rounded-full bg-black/60 text-white uppercase">{p.category||'General'}</div></div>
+        <div className="p-3"><h3 className="font-bold text-[13px] leading-tight line-clamp-2">{p.title}</h3><p className="mt-1 font-black text-[#16a34a]">₦{Number(p.price).toLocaleString()}</p><p className="mt-1 text-[11px] opacity-60">📍 {p.pickup_location||p.location||'TECH-U'} • {p.seller_name||'Student'}</p></div>
+      </Link>)}
+    </div>
+
+    <div className="mt-6 text-center text-xs opacity-50">Showing only approved listings • Pending needs admin at /admin/pending</div>
+  </div>
+}
