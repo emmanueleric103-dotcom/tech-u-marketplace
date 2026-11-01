@@ -1,160 +1,83 @@
-"use client";
-export const dynamic = "force-dynamic";
+"use client"
+export const dynamic = 'force-dynamic'
+import { useState, useEffect } from 'react'
+import Link from 'next/link'
+import { supabase } from '../lib/supabase'
 
-import { useState, useEffect, useMemo } from "react";
-import Link from "next/link";
-import { supabase } from "@/lib/supabaseClient";
-
-type Product = {
-  id: string;
-  title: string;
-  price: number;
-  category: string;
-  images: string[];
-  seller_name: string;
-  pickup_location: string;
-  status: string;
-  views: number;
-  created_at: string;
-};
-
-const CATS = ["All","Mobile","Laptop","Bike","Furniture","Clothes","Other"];
-
-export default function HomePage() {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [q, setQ] = useState("");
-  const [cat, setCat] = useState("All");
-  const [sort, setSort] = useState<"newest"|"price_low"|"price_high"|"views">("newest");
-  const [loading, setLoading] = useState(true);
+export default function Home(){
+  const [products,setProducts]=useState<any[]>([])
+  const [q,setQ]=useState('')
+  const [cat,setCat]=useState('all')
+  const [sort,setSort]=useState('newest')
+  const [loading,setLoading]=useState(true)
 
   useEffect(()=>{
     (async()=>{
-      setLoading(true);
-      const { data } = await supabase
-        .from("products")
-        .select("*")
-        .eq("status","approved")
-        .order("created_at",{ascending:false});
-      if(data) setProducts(data as Product[]);
-      setLoading(false);
-    })();
-  },[]);
+      setLoading(true)
+      const {data} = await supabase.from('products').select('*').eq('status','approved').order('created_at',{ascending:false})
+      setProducts(data||[])
+      setLoading(false)
+    })()
+  },[])
 
-  const filtered = useMemo(()=>{
-    let list = [...products];
-    if(q) {
-      const low = q.toLowerCase();
-      list = list.filter(p => p.title.toLowerCase().includes(low) || p.pickup_location?.toLowerCase().includes(low));
-    }
-    if(cat!=="All") list = list.filter(p=>p.category===cat);
-    if(sort==="newest") list.sort((a,b)=>+new Date(b.created_at)-+new Date(a.created_at));
-    if(sort==="price_low") list.sort((a,b)=>a.price-b.price);
-    if(sort==="price_high") list.sort((a,b)=>b.price-a.price);
-    if(sort==="views") list.sort((a,b)=>(b.views||0)-(a.views||0));
-    return list;
-  },[products,q,cat,sort]);
+  const filtered = products.filter(p=>{
+    const matchQ = !q || p.title?.toLowerCase().includes(q.toLowerCase()) || p.description?.toLowerCase().includes(q.toLowerCase())
+    const matchCat = cat==='all' || p.category===cat
+    return matchQ && matchCat
+  }).sort((a,b)=>{
+    if(sort==='price-low') return a.price - b.price
+    if(sort==='price-high') return b.price - a.price
+    if(sort==='views') return (b.views||0)-(a.views||0)
+    return 0
+  })
 
-  const featured = useMemo(()=> [...products].sort((a,b)=>(b.views||0)-(a.views||0)).slice(0,3),[products]);
-
-  const counts = useMemo(()=>{
-    const m: Record<string,number> = {};
-    products.forEach(p=>{ m[p.category]=(m[p.category]||0)+1 });
-    return m;
-  },[products]);
-
-  const timeAgo = (d:string)=> {
-    const h = Math.floor((Date.now()-+new Date(d))/36e5);
-    if(h<1) return "Just now"; if(h<24) return `${h}h ago`; return `${Math.floor(h/24)}d ago`;
-  };
+  const cats = ['all','electronics','phones','laptops','accessories','fashion','books','furniture']
+  const catCounts:any = {all: products.length}
+  products.forEach((p:any)=>{catCounts[p.category]=(catCounts[p.category]||0)+1})
+  const featured = [...products].sort((a,b)=>(b.views||0)-(a.views||0)).slice(0,3)
+  const activeCount = products.length
 
   return (
-    <div className="min-h-screen bg-[#fbfaf7] dark:bg-[#0a0a0a] text-zinc-900 dark:text-zinc-100">
-      <header className="sticky top-0 z-30 backdrop-blur-xl bg-white/80 dark:bg-zinc-900/80 border-b border-zinc-200 dark:border-zinc-800">
-        <div className="max-w-[1280px] mx-auto px-4 md:px-8 py-3 flex items-center gap-4">
-          <div className="w-9 h-9 rounded-full bg-black text-white dark:bg-white dark:text-black grid place-items-center font-black">M</div>
-          <span className="font-black tracking-tight">MARKET</span>
-          <div className="ml-auto flex gap-2">
-            <Link href="/admin" className="px-4 py-2 rounded-full bg-black text-white dark:bg-white dark:text-black text-xs font-bold">Admin</Link>
-          </div>
+    <div className="min-h-screen bg-gray-50 dark:bg-zinc-950">
+      <header className="sticky top-0 z-30 bg-white/80 dark:bg-zinc-900/80 backdrop-blur border-b">
+        <div className="max-w-6xl mx-auto px-4 py-3 flex justify-between items-center">
+          <Link href="/" className="font-black text-xl flex items-center gap-2"><span className="bg-green-600 text-white w-8 h-8 rounded-lg flex items-center justify-center">T</span>TECH-U_MARKET</Link>
+          <Link href="/sell" className="bg-green-600 text-white px-5 py-2 rounded-full font-bold">Sell</Link>
         </div>
       </header>
-
-      <main className="max-w-[1280px] mx-auto px-4 md:px-8 py-6">
-        {/* Hero Search */}
-        <div className="rounded-[28px] bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-4 md:p-6 mb-6">
-          <div className="flex flex-wrap gap-3">
-            <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Search mobile, bike, location..." className="flex-1 min-w-[220px] px-5 py-3 rounded-full bg-zinc-100 dark:bg-zinc-800 outline-none text-sm" />
-            <select value={cat} onChange={e=>setCat(e.target.value)} className="px-4 py-3 rounded-full bg-zinc-100 dark:bg-zinc-800 text-sm font-bold outline-none">
-              {CATS.map(c=><option key={c}>{c}</option>)}
-            </select>
-            <select value={sort} onChange={e=>setSort(e.target.value as any)} className="px-4 py-3 rounded-full bg-zinc-100 dark:bg-zinc-800 text-sm font-bold outline-none">
-              <option value="newest">Newest</option>
-              <option value="price_low">Price Low</option>
-              <option value="price_high">Price High</option>
-              <option value="views">Most Viewed</option>
+      <main className="max-w-6xl mx-auto px-4 py-6">
+        <div className="bg-white dark:bg-zinc-900 rounded-[24px] p-6 shadow-sm mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-bold">🟢 {activeCount} active now</h2>
+            <select value={sort} onChange={e=>setSort(e.target.value)} className="border rounded-full px-3 py-1 text-sm">
+              <option value="newest">Newest</option><option value="price-low">Price Low-High</option><option value="price-high">Price High-Low</option><option value="views">Most Viewed</option>
             </select>
           </div>
-          <div className="mt-4 flex flex-wrap gap-2 text-[11px]">
-            <span className="px-3 py-1.5 rounded-full bg-emerald-500 text-white font-bold">{products.length} Active Online</span>
-            {CATS.slice(1).map(c=>(
-              <button key={c} onClick={()=>setCat(c)} className={`px-3 py-1.5 rounded-full border font-bold ${cat===c ? "bg-black text-white border-black" : "bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-700"}`}>{c} {counts[c] ? `(${counts[c]})` : ""}</button>
-            ))}
+          <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Search Smart watch, phones..." className="w-full border rounded-full px-5 py-3 mb-4"/>
+          <div className="flex gap-2 overflow-x-auto pb-2">
+            {cats.map(c=>(<button key={c} onClick={()=>setCat(c)} className={`px-4 py-2 rounded-full text-sm whitespace-nowrap capitalize ${cat===c?'bg-green-600 text-white':'bg-gray-100 dark:bg-zinc-800'}`}>{c} {catCounts[c]?`(${catCounts[c]})`:''}</button>))}
           </div>
         </div>
-
-        {/* Featured */}
-        {!q && cat==="All" && featured.length>0 && (
-          <div className="mb-8">
-            <h2 className="font-black text-[18px] mb-3">🔥 Most Viewed</h2>
-            <div className="grid md:grid-cols-3 gap-3">
-              {featured.map(p=>(
-                <Link key={p.id} href={`/products/${p.id}`} className="rounded-[20px] bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 overflow-hidden flex gap-3 p-3">
-                  {/* eslint-disable-next-line */}
-                  <img src={p.images?.[0]} className="w-[84px] h-[84px] rounded-[14px] object-cover" />
-                  <div className="flex-1 min-w-0">
-                    <div className="text-[11px] font-bold opacity-60">{p.category} • {p.views} views</div>
-                    <div className="font-bold text-[14px] truncate">{p.title}</div>
-                    <div className="font-black">₹{p.price}</div>
-                  </div>
-                </Link>
-              ))}
+        {featured.length>0 && (
+          <div className="mb-6">
+            <h3 className="font-bold mb-3">⭐ Featured - Most Viewed</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {featured.map((p:any)=>(<Link key={'f'+p.id} href={`/products/${p.id}`} className="bg-white dark:bg-zinc-900 rounded-[20px] overflow-hidden shadow hover:shadow-xl transition"><img src={p.images?.[0]||p.image_url||'/placeholder.png'} className="w-full h-40 object-cover"/><div className="p-3"><p className="font-bold truncate">{p.title}</p><p className="text-green-600 font-black">₦{Number(p.price).toLocaleString()}</p></div></Link>))}
             </div>
           </div>
         )}
-
-        {/* Grid */}
-        {loading ? <div className="py-20 text-center opacity-50">Loading approved products...</div> : (
-          <>
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="font-black text-[18px]">{cat==="All" ? "All Products" : cat} • {filtered.length}</h2>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {filtered.map(p=>(
-                <Link key={p.id} href={`/products/${p.id}`} className="group rounded-[20px] bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 overflow-hidden hover:shadow-xl transition">
-                  <div className="aspect-[4/3] bg-zinc-100 dark:bg-zinc-800 overflow-hidden relative">
-                    {/* eslint-disable-next-line */}
-                    <img src={p.images?.[0]} alt={p.title} className="w-full h-full object-cover group-hover:scale-105 transition duration-500" />
-                    <span className="absolute top-2 left-2 px-2.5 py-1 rounded-full bg-white/90 text-[11px] font-bold text-black">{p.category}</span>
-                  </div>
-                  <div className="p-3.5">
-                    <div className="flex gap-2 justify-between">
-                      <h3 className="font-bold text-[14px] leading-tight line-clamp-2 flex-1">{p.title}</h3>
-                      <span className="font-black text-[15px]">₹{p.price}</span>
-                    </div>
-                    <div className="mt-2 text-[11px] opacity-70 flex items-center justify-between">
-                      <span>📍 {p.pickup_location}</span>
-                      <span>👁 {p.views||0}</span>
-                    </div>
-                    <div className="mt-1 text-[11px] opacity-60">{p.seller_name} • {timeAgo(p.created_at)}</div>
-                  </div>
-                </Link>
-              ))}
-            </div>
-            {filtered.length===0 && <div className="py-20 text-center opacity-50 border border-dashed rounded-[20px] mt-6">No products found. Try different search.</div>}
-          </>
+        {loading ? <p>Loading...</p> : (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {filtered.map((p:any)=>(
+              <Link key={p.id} href={`/products/${p.id}`} className="bg-white dark:bg-zinc-900 rounded-[20px] overflow-hidden shadow-sm hover:shadow-xl hover:scale-[1.02] transition-all">
+                <div className="relative"><img src={p.images?.[0]||p.image_url} alt={p.title} className="w-full h-44 object-cover"/><span className="absolute top-2 left-2 bg-black/70 text-white text-[10px] px-2 py-1 rounded-full capitalize">{p.condition||'Used'}</span><span className="absolute top-2 right-2 bg-white text-black text-[10px] px-2 py-1 rounded-full">👁️ {p.views||0}</span></div>
+                <div className="p-3"><p className="font-bold text-sm truncate">{p.title}</p><p className="text-green-600 font-black">₦{Number(p.price).toLocaleString()}</p><p className="text-[11px] text-gray-500 mt-1">📍{p.pickup_location||p.location} • {p.seller_name||'Student'}</p></div>
+              </Link>
+            ))}
+          </div>
         )}
+        {filtered.length===0 && !loading && <div className="text-center py-20 bg-white dark:bg-zinc-900 rounded-[24px]"><p className="text-5xl mb-4">📦</p><p>No products found</p></div>}
       </main>
     </div>
-  );
+  )
 }
-
