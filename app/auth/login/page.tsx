@@ -1,46 +1,35 @@
 'use client'
 export const dynamic = 'force-dynamic'
-
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { supabase } from '../../../lib/supabase'
 import Link from 'next/link'
-import { createClient } from '../../../lib/supabase'
+import { useRouter } from 'next/navigation'
 
-export default function LoginPage() {
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
-  const router = useRouter()
-  const supabase = createClient()
+export default function LoginPage(){
+  const [email,setEmail]=useState('')
+  const [password,setPassword]=useState('')
+  const [loading,setLoading]=useState(false)
+  const router=useRouter()
 
-  async function onSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    setLoading(true); setError('')
+  async function login(){
+    setLoading(true)
     const { error } = await supabase.auth.signInWithPassword({ email, password })
-    if (error) setError(error.message)
-    else router.push('/')
+    if(!error) router.push('/profile')
+    else alert(error.message)
     setLoading(false)
   }
 
   return (
-    <div className="min-h-[80vh] grid place-items-center px-4">
-      <div className="w-full max-w-[420px] rounded-[20px] bg-white border shadow-sm p-8">
-        <h1 className="text-2xl font-black tracking-tight">Welcome back</h1>
-        <p className="mt-1 text-sm text-zinc-500">Login to TECH-U MARKET</p>
-        <form onSubmit={onSubmit} className="mt-6 space-y-4">
-          <div>
-            <label className="text-sm font-medium">Email</label>
-            <input value={email} onChange={e=>setEmail(e.target.value)} type="email" required className="mt-1 w-full h-11 rounded-xl border px-4 focus:outline-none focus:ring-2 focus:ring-[#16a34a]/20 focus:border-[#16a34a]" placeholder="you@tech-u.edu.ng" />
-          </div>
-          <div>
-            <label className="text-sm font-medium">Password</label>
-            <input value={password} onChange={e=>setPassword(e.target.value)} type="password" required className="mt-1 w-full h-11 rounded-xl border px-4 focus:outline-none focus:ring-2 focus:ring-[#16a34a]/20 focus:border-[#16a34a]" placeholder="••••••••" />
-          </div>
-          {error && <p className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-xl p-3">{error}</p>}
-          <button disabled={loading} className="w-full h-11 rounded-full bg-[#16a34a] text-white font-semibold hover:bg-[#15803d] disabled:opacity-60">{loading ? 'Signing in...' : 'Login'}</button>
-        </form>
-        <p className="mt-6 text-center text-sm text-zinc-500">No account? <Link href="/auth/register" className="font-semibold text-[#16a34a] hover:underline">Register</Link></p>
+    <div className="min-h-screen bg-[#f9fafb] flex items-center justify-center p-4">
+      <div className="w-full max-w-[420px] bg-white rounded-[24px] shadow-lg border border-zinc-100 p-8">
+        <h1 className="text-[28px] font-black tracking-tight mb-1">Welcome back</h1>
+        <p className="text-sm text-zinc-500 mb-8">Login to TECH-U MARKET</p>
+        <div className="space-y-4">
+          <input value={email} onChange={e=>setEmail(e.target.value)} placeholder="Email address" className="w-full h-[52px] rounded-xl border border-zinc-200 px-4 bg-zinc-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-green-500" />
+          <input value={password} onChange={e=>setPassword(e.target.value)} type="password" placeholder="Password" className="w-full h-[52px] rounded-xl border border-zinc-200 px-4 bg-zinc-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-green-500" />
+          <button onClick={login} disabled={loading} className="w-full h-[52px] rounded-full bg-green-600 text-white font-semibold shadow-lg hover:bg-green-700 transition">{loading?'Logging in...':'Login'}</button>
+        </div>
+        <p className="text-center text-sm mt-6 text-zinc-500">No account? <Link href="/auth/register" className="text-green-600 font-semibold">Create one</Link></p>
       </div>
     </div>
   )
