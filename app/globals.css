@@ -2,6 +2,32 @@
 @tailwind components;
 @tailwind utilities;
 
-:root { --bg: #fafafa; }
-body { background: var(--bg); font-family: Inter, system-ui, sans-serif; }
-a { text-underline-offset: 3px; }
+:root {
+  --brand: #16a34a;
+  --bg: #f8faf8;
+}
+
+* { -webkit-tap-highlight-color: transparent; }
+
+body {
+  background: var(--bg);
+  color: #111827;
+  font-family: ui-sans-system, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+  overflow-x: clip;
+}
+
+.glass {
+  backdrop-filter: blur(12px);
+  background: rgba(255,255,255,0.9);
+}
+
+.card {
+  @apply bg-white rounded-2xl shadow-sm border border-zinc-100;
+}
+
+.btn-pill {
+  @apply rounded-full px-5 py-3 font-semibold transition active:scale-[0.98];
+}
+
+.scrollbar-none::-webkit-scrollbar { display: none; }
+.scrollbar-none { -ms-overflow-style: none; scrollbar-width: none; }

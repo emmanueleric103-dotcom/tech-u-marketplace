@@ -1,54 +1,132 @@
-'use client'
-export const dynamic = "force-dynamic";
-import Link from "next/link";
-import { supabase } from "../lib/supabase";
-import { useEffect, useState } from "react";
+'use client';
+export const dynamic = 'force-dynamic';
 
-export default function Home() {
-  const [user, setUser] = useState<any>(null);
+import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { supabase } from '../lib/supabase';
+
+type Listing = {
+  id: string;
+  title: string;
+  price: number;
+  category: string;
+  condition: string;
+  image_urls: string[];
+  status: string;
+  created_at: string;
+};
+
+const CATEGORIES = ['All', 'Electronics', 'Fashion', 'Books', 'Hostel Essentials', 'Gadgets', 'Furniture', 'Others'];
+
+export default function HomePage() {
+  const [listings, setListings] = useState<Listing[]>([]);
+  const [search, setSearch] = useState('');
+  const [category, setCategory] = useState('All');
+  const [loading, setLoading] = useState(true);
+
   useEffect(() => {
-    supabase.auth.getUser().then((res) => setUser(res.data.user));
+    async function fetchLatest() {
+      setLoading(true);
+      const { data } = await supabase
+        .from('listings')
+        .select('id,title,price,category,condition,image_urls,status,created_at')
+        .eq('status', 'approved')
+        .order('created_at', { ascending: false })
+        .limit(24);
+      if (data) setListings(data as any);
+      setLoading(false);
+    }
+    fetchLatest();
   }, []);
+
+  const filtered = listings.filter(l => {
+    const matchSearch = l.title.toLowerCase().includes(search.toLowerCase());
+    const matchCat = category === 'All' || l.category === category;
+    return matchSearch && matchCat;
+  });
+
   return (
-    <main className="max-w-6xl mx-auto px-6 py-12">
-      <div className="grid md:grid-cols-2 gap-10 items-center">
-        <div>
-          <h1 className="text-5xl font-black leading-[0.9] tracking-tight">TECH-U<br/>MARKETPLACE</h1>
-          <p className="mt-4 text-zinc-600">The real student marketplace for Thomas Adewumi University. Buy, sell, request - all inside campus. No fake files, all at root.</p>
-          <div className="mt-8 p-5 bg-white border rounded-2xl">
-            <h2 className="font-bold">What is this for?</h2>
-            <p className="text-sm text-zinc-600 mt-2">Students list physical items (books, gadgets, clothes) and digital services (tutorials, designs). Buyers contact via WhatsApp or Call directly. Stock tracking built-in.</p>
+    <div className="space-y-8">
+      {/* Hero */}
+      <section className="card p-6 sm:p-10 overflow-hidden relative">
+        <div className="absolute -right-16 -top-16 w-[240px] h-[240px] bg-brand-100 rounded-full blur-2xl" />
+        <div className="relative">
+          <span className="inline-flex text-[11px] font-bold tracking-widest bg-brand-50 text-brand-700 px-3 py-1 rounded-full border border-brand-100">ABIOLA AJIMOBI FIRST TECHNICAL UNIVERSITY</span>
+          <h1 className="mt-4 text-[32px] sm:text-[44px] font-black leading-[0.95] tracking-tight">Buy & Sell<br/>on Campus</h1>
+          <p className="mt-3 text-zinc-600 max-w-[520px] text-[15px] leading-relaxed">The simple, fast marketplace for TECH-U Ibadan. No buyer accounts. Post in 30 seconds, admin approves, buyers chat you on WhatsApp directly.</p>
+          <div className="mt-6 flex flex-col sm:flex-row gap-3">
+            <Link href="/sell" className="btn-pill bg-brand-600 text-white text-center">Sell an Item — Free</Link>
+            <Link href="/products" className="btn-pill bg-zinc-900 text-white text-center sm:bg-white sm:text-zinc-900 sm:border sm:border-zinc-200">Browse Products</Link>
           </div>
-          <div className="mt-6 p-5 bg-zinc-900 text-white rounded-2xl">
-            <h3 className="font-bold">How to use - 3 steps</h3>
-            <ol className="list-decimal pl-5 text-sm space-y-2 mt-3 text-zinc-300">
-              <li>Create account with your TECH-U email and matric number</li>
-              <li>List product with photos (drag and drop), set stock, price, WhatsApp</li>
-              <li>Buyers request and contact you - manage sales in Dashboard</li>
-            </ol>
-          </div>
-          <div className="mt-8 flex gap-4">
-            <Link href="/auth/login" className="px-8 py-4 bg-black text-white font-bold rounded-full text-lg">Login</Link>
-            <Link href="/auth/register" className="px-8 py-4 bg-white border-2 border-black text-black font-bold rounded-full text-lg">Register</Link>
-          </div>
-        </div>
-        <div className="space-y-4">
-          <div className="bg-white border border-zinc-200 rounded-[2rem] p-8 shadow-sm">
-            <div className="text-xs font-mono uppercase tracking-widest">Live status</div>
-            <div className="mt-4 text-2xl font-bold">{user ? "Welcome " + (user.email || "") : "Not logged in - please login"}</div>
-            <div className="mt-4 text-sm text-zinc-500">Real Supabase auth - no mock</div>
-          </div>
-          <div className="bg-white border rounded-[1.5rem] p-6">
-            <div className="font-bold">Why TECH-U Market?</div>
-            <ul className="mt-3 text-sm text-zinc-600 list-disc pl-5 space-y-1">
-              <li>Real image upload to bucket Image (capital I)</li>
-              <li>Stock management - buyers see remaining</li>
-              <li>WhatsApp wa.me and tel: links</li>
-              <li>Profile per user, no login loop</li>
-            </ul>
+
+          {/* Search bar rounded-full shadow-lg */}
+          <div className="mt-8 max-w-[640px] relative">
+            <input
+              value={search}
+              onChange={e=>setSearch(e.target.value)}
+              placeholder="Search phones, books, hostel items..."
+              className="w-full h-[56px] rounded-full shadow-lg border border-zinc-100 pl-12 pr-4 outline-none focus:ring-2 focus:ring-brand-600"
+            />
+            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400">⌕</span>
           </div>
         </div>
+      </section>
+
+      {/* Browse by category pills */}
+      <div className="flex gap-2 overflow-auto scrollbar-none pb-1">
+        {CATEGORIES.map(c => (
+          <button
+            key={c}
+            onClick={()=>setCategory(c)}
+            className={`whitespace-nowrap px-4 py-2 rounded-full text-sm font-semibold border transition ${category===c ? 'bg-zinc-900 text-white border-zinc-900' : 'bg-white border-zinc-200 hover:bg-zinc-50'}`}
+          >{c}</button>
+        ))}
       </div>
-    </main>
+
+      {/* Latest */}
+      <section>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="font-bold text-[18px]">Latest approved</h2>
+          <Link href="/products" className="text-sm font-semibold text-brand-700">View all →</Link>
+        </div>
+
+        {loading ? (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
+            {[...Array(8)].map((_,i)=><div key={i} className="card h-[220px] animate-pulse bg-zinc-50" />)}
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="card p-10 text-center">
+            <div className="mx-auto w-12 h-12 rounded-full bg-brand-50 grid place-items-center mb-3">🛒</div>
+            <p className="font-semibold">No listings yet</p>
+            <p className="text-sm text-zinc-500 mt-1">Be the first to sell on TECH-U Marketplace. Your listing will be reviewed before going public.</p>
+            <Link href="/sell" className="mt-4 inline-flex btn-pill bg-brand-600 text-white">Post your first item</Link>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
+            {filtered.map(item => (
+              <Link key={item.id} href={`/products/${item.id}`} className="card overflow-hidden group">
+                <div className="aspect-[4/3] bg-zinc-100 overflow-hidden relative">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={item.image_urls?.[0] || 'https://via.placeholder.com/400?text=No+Image'} alt={item.title} className="w-full h-full object-cover group-hover:scale-105 transition duration-300" />
+                  <span className="absolute top-2 left-2 text-[11px] font-bold bg-white/90 backdrop-blur px-2.5 py-1 rounded-full">{item.condition}</span>
+                </div>
+                <div className="p-3">
+                  <p className="font-semibold text-[14px] leading-tight line-clamp-2">{item.title}</p>
+                  <p className="mt-1 font-black text-[16px]">₦{Number(item.price).toLocaleString()}</p>
+                  <p className="text-[12px] text-zinc-500">{item.category} • {new Date(item.created_at).toLocaleDateString()}</p>
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* Trust */}
+      <section className="grid sm:grid-cols-3 gap-3">
+        <div className="card p-4"><p className="font-bold text-sm">No buyer account</p><p className="text-xs text-zinc-500 mt-1">Browse & contact seller directly via WhatsApp/Call.</p></div>
+        <div className="card p-4"><p className="font-bold text-sm">Admin approval</p><p className="text-xs text-zinc-500 mt-1">Every listing is reviewed to reduce scams.</p></div>
+        <div className="card p-4"><p className="font-bold text-sm">Mobile-first</p><p className="text-xs text-zinc-500 mt-1">Built for Android, works perfectly on iPhone & desktop.</p></div>
+      </section>
+    </div>
   );
 }

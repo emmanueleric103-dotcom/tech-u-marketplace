@@ -1,47 +1,88 @@
-'use client'
-import { useEffect, useState } from "react";
-import { supabase } from "../../lib/supabase";
-import Link from "next/link";
+'use client';
+export const dynamic = 'force-dynamic';
 
-export default function ProductsPage() {
-  const [products, setProducts] = useState<any[]>([]);
-  const [search, setSearch] = useState("");
-  const [cat, setCat] = useState("All");
+import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { supabase } from '../../lib/supabase';
 
-  useEffect(() => {
-    supabase.from("products").select("*").then(({ data }) => { if (data) setProducts(data); });
-  }, []);
+const CATS = ['All','Electronics','Fashion','Books','Hostel Essentials','Gadgets','Furniture','Others'];
 
-  const cats = ["All", ...Array.from(new Set(products.map(p => p.category).filter(Boolean)))];
-  const filtered = products.filter(p => {
-    const matchSearch = p.title.toLowerCase().includes(search.toLowerCase());
-    const matchCat = cat === "All" || p.category === cat;
-    return matchSearch && matchCat;
+export default function BrowsePage() {
+  const [items, setItems] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [q, setQ] = useState('');
+  const [cat, setCat] = useState('All');
+  const [min, setMin] = useState('');
+  const [max, setMax] = useState('');
+  const [cond, setCond] = useState('All');
+  const [showSold, setShowSold] = useState(false);
+  const [sort, setSort] = useState('newest');
+
+  useEffect(()=>{ fetchData(); }, [cat, cond, sort, showSold]);
+
+  async function fetchData() {
+    setLoading(true);
+    let query = supabase.from('listings').select('*').order('created_at', { ascending: sort !== 'newest' });
+    if (!showSold) query = query.neq('status','sold');
+    else query = query.in('status',['approved','sold']);
+    if (cat !== 'All') query = query.eq('category', cat);
+    if (cond !== 'All') query = query.eq('condition', cond);
+    if (!showSold) query = query.eq('status','approved');
+    const { data } = await query.limit(100);
+    if (data) setItems(data);
+    setLoading(false);
+  }
+
+  const filtered = items.filter(it=>{
+    if (q && !it.title.toLowerCase().includes(q.toLowerCase()) && !it.description?.toLowerCase().includes(q.toLowerCase())) return false;
+    if (min && Number(it.price) < Number(min)) return false;
+    if (max && Number(it.price) > Number(max)) return false;
+    return true;
   });
 
   return (
-    <main className="max-w-6xl mx-auto px-6 py-10">
-      <h1 className="text-3xl font-black">Browse Products</h1>
-      <div className="mt-6 flex gap-3 flex-wrap">
-        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search..." className="border p-3 rounded-full px-5 flex-1 min-w-[200px]" />
+    <div className="space-y-6">
+      <h1 className="text-[24px] font-black tracking-tight">Browse Products</h1>
+
+      <div className="card p-4 grid sm:grid-cols-12 gap-3">
+        <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Keyword" className="sm:col-span-4 h-11 rounded-full border border-zinc-200 px-4 outline-none focus:ring-2 focus:ring-brand-600" />
+        <select value={cat} onChange={e=>setCat(e.target.value)} className="sm:col-span-2 h-11 rounded-full border px-3">
+          {CATS.map(c=><option key={c}>{c}</option>)}
+        </select>
+        <select value={cond} onChange={e=>setCond(e.target.value)} className="sm:col-span-2 h-11 rounded-full border px-3">
+          <option>All</option><option>New</option><option>Used</option>
+        </select>
+        <input type="number" value={min} onChange={e=>setMin(e.target.value)} placeholder="Min ₦" className="h-11 rounded-full border px-4" />
+        <input type="number" value={max} onChange={e=>setMax(e.target.value)} placeholder="Max ₦" className="h-11 rounded-full border px-4" />
+        <div className="sm:col-span-12 flex gap-2 items-center text-sm">
+          <label className="flex items-center gap-2"><input type="checkbox" checked={showSold} onChange={e=>setShowSold(e.target.checked)} /> Show sold items</label>
+          <select value={sort} onChange={e=>setSort(e.target.value)} className="ml-auto h-9 rounded-full border px-3 text-sm">
+            <option value="newest">Newest</option><option value="oldest">Oldest</option>
+          </select>
+          <button onClick={fetchData} className="h-9 px-4 rounded-full bg-zinc-900 text-white font-semibold">Apply</button>
+        </div>
       </div>
-      <div className="mt-4 flex gap-2 flex-wrap">
-        {cats.map(c => (
-          <button key={c} onClick={() => setCat(c)} className={"px-4 py-2 rounded-full text-sm border " + (cat === c ? "bg-black text-white" : "bg-white")}>{c}</button>
-        ))}
-      </div>
-      <div className="grid md:grid-cols-3 gap-4 mt-8">
-        {filtered.map(p => (
-          <Link key={p.id} href={"/products/" + p.id} className="bg-white border rounded-2xl overflow-hidden">
-            {p.image_urls?.[0] && <img src={p.image_urls[0]} className="h-48 w-full object-cover" />}
-            <div className="p-4">
-              <div className="font-bold">{p.title}</div>
-              <div className="text-sm text-zinc-600">NGN {p.price}</div>
-              <div className="text-xs mt-1 text-emerald-600 font-medium">{p.stock} left in stock - {p.product_type}</div>
-            </div>
-          </Link>
-        ))}
-      </div>
-    </main>
+
+      {loading ? <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">{[...Array(8)].map((_,i)=><div key={i} className="card h-[220px] animate-pulse" />)}</div> :
+        filtered.length===0 ? <div className="card p-10 text-center text-zinc-500">No products found. Try different filters.</div> :
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
+          {filtered.map(it=>(
+            <Link key={it.id} href={`/products/${it.id}`} className="card overflow-hidden group relative">
+              <div className="aspect-[4/3] bg-zinc-100 relative overflow-hidden">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={it.image_urls?.[0] || 'https://via.placeholder.com/400'} alt={it.title} className="w-full h-full object-cover group-hover:scale-105 transition" />
+                {it.status==='sold' && <span className="absolute top-2 right-2 bg-zinc-900 text-white text-[11px] font-bold px-2.5 py-1 rounded-full">SOLD</span>}
+                <span className="absolute top-2 left-2 text-[11px] font-bold bg-white/90 px-2.5 py-1 rounded-full">{it.condition}</span>
+              </div>
+              <div className="p-3">
+                <p className="font-semibold text-[14px] line-clamp-2 leading-tight">{it.title}</p>
+                <p className="font-black mt-1">₦{Number(it.price).toLocaleString()}</p>
+                <p className="text-[11px] text-zinc-500">{it.category} • {new Date(it.created_at).toLocaleDateString()}</p>
+              </div>
+            </Link>
+          ))}
+        </div>
+      }
+    </div>
   );
 }
