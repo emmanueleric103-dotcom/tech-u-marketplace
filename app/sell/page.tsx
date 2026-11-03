@@ -1,13 +1,165 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { supabase } from '../lib/supabase'
-import { useRouter } from 'next/navigation'
-function normalizeWA(num:string){let s=num.replace(/[^0-9]/g,'');if(s.startsWith('0'))s='234'+s.slice(1);if(s.startsWith('+'))s=s.slice(1);if(!s.startsWith('234')&&s.length===10)s='234'+s;return s}
-export default function SellPage(){
-  const router=useRouter()
-  const [title,setTitle]=useState('');const [price,setPrice]=useState('');const [category,setCategory]=useState('Books');const [condition,setCondition]=useState('New');const [description,setDescription]=useState('');const [wa,setWa]=useState('');const [callNum,setCallNum]=useState('');const [campus,setCampus]=useState('Academic Block');const [images,setImages]=useState<string[]>([]);const [loading,setLoading]=useState(false)
-  const removeImage=(idx:number)=>{setImages(prev=>prev.filter((_,i)=>i!==idx))}
-  const handleFiles=async(e:any)=>{const files=Array.from(e.target.files||[]) as File[];const remaining=3-images.length;const toProcess=files.slice(0,remaining);for(const file of toProcess){const compressed=await new Promise<string>((resolve)=>{const img=new Image();const reader=new FileReader();reader.onload=(ev)=>{img.onload=()=>{const canvas=document.createElement('canvas');const max=800;let w=img.width,h=img.height;if(w>h){if(w>max){h=h*max/w;w=max}}else{if(h>max){w=w*max/h;h=max}}canvas.width=w;canvas.height=h;const ctx=canvas.getContext('2d');ctx?.drawImage(img,0,0,w,h);resolve(canvas.toDataURL('image/jpeg',0.7))};img.src=ev.target?.result as string};reader.readAsDataURL(file)});setImages(prev=>[...prev,compressed])}e.target.value=''}
-  const handlePublish=async()=>{if(!title.trim()){alert('Title required');return}if(!price.trim()){alert('Price required');return}if(!description.trim()){alert('Description required');return}if(!wa.trim()){alert('WhatsApp required');return}if(images.length===0){alert('Add at least 1 image');return}setLoading(true);try{const waNorm=normalizeWA(wa);const callNorm=callNum?normalizeWA(callNum):waNorm;const payloadFull:any={title:title.trim(),description:description.trim(),price:parseFloat(price)||0,category,condition,location:campus,campus_location:campus,whatsapp_number:waNorm,call_number:callNorm,whatsapp:waNorm,images,image_url:images[0],status:'pending'};let{error}=await supabase.from('products').insert([payloadFull]);if(error){console.log('Full failed, trying minimal:',error.message);const payloadMin:any={title:title.trim(),description:description.trim(),price:parseFloat(price)||0,category,whatsapp_number:waNorm,whatsapp:waNorm,image_url:images[0],status:'pending'};const res2=await supabase.from('products').insert([payloadMin]);if(res2.error)throw res2.error}alert('✅ Listed! Waiting for admin approval.');router.push('/')}catch(err:any){console.error(err);alert('❌ Publish failed: '+(err?.message||'Unknown'))}finally{setLoading(false)}}
-  return (<div className="min-h-screen bg-[#F8F7FF] pb-24"><div className="max-w-[600px] mx-auto px-4 pt-6"><h1 className="text-[20px] font-bold text-[#1E1B4B]">Sell an Item</h1><p className="text-[13px] text-gray-500 mt-1">Large touch-friendly • 3 images max • WhatsApp Bridge</p><div className="mt-5 space-y-4"><div><label className="text-[13px] font-semibold text-[#1E1B4B]">Title *</label><input value={title} onChange={e=>setTitle(e.target.value)} className="w-full mt-1.5 h-12 px-4 bg-white rounded-xl border border-gray-200 text-[15px] outline-none focus:border-[#5B21B6]" /></div><div className="flex gap-3"><div className="flex-1"><label className="text-[13px] font-semibold text-[#1E1B4B]">Price ₦ *</label><input value={price} onChange={e=>setPrice(e.target.value)} type="number" className="w-full mt-1.5 h-12 px-4 bg-white rounded-xl border border-gray-200 text-[15px] outline-none focus:border-[#5B21B6]" /></div><div className="flex-1"><label className="text-[13px] font-semibold text-[#1E1B4B]">Category</label><select value={category} onChange={e=>setCategory(e.target.value)} className="w-full mt-1.5 h-12 px-4 bg-white rounded-xl border border-gray-200 text-[15px] outline-none"><option>Books</option><option>Electronics</option><option>Phones</option><option>Fashion</option><option>Home</option><option>Vehicles</option><option>Sports</option><option>Others</option></select></div></div><div><label className="text-[13px] font-semibold text-[#1E1B4B]">Condition</label><select value={condition} onChange={e=>setCondition(e.target.value)} className="w-full mt-1.5 h-12 px-4 bg-white rounded-xl border border-gray-200 text-[15px] outline-none"><option>New</option><option>Like New</option><option>Fair</option><option>Used</option></select></div><div><label className="text-[13px] font-semibold text-[#1E1B4B]">Description *</label><textarea value={description} onChange={e=>setDescription(e.target.value)} className="w-full mt-1.5 min-h-[90px] p-4 bg-white rounded-xl border border-gray-200 text-[15px] outline-none focus:border-[#5B21B6] resize-y" /></div><div><label className="text-[13px] font-semibold text-[#1E1B4B]">Images (3 max, auto compress 800px)</label><div className="mt-1.5 flex items-center gap-2"><input type="file" accept="image/*" multiple onChange={handleFiles} className="text-[13px]" /><span className="text-[12px] text-gray-500">{images.length}/3</span></div>{images.length>0&&<div className="flex gap-2 mt-3 flex-wrap">{images.map((src,idx)=><div key={idx} className="relative w-20 h-20 rounded-xl overflow-hidden border border-gray-200 bg-white"><img src={src} alt="" className="w-full h-full object-cover" /><button onClick={()=>removeImage(idx)} type="button" className="absolute -top-1 -right-1 w-6 h-6 bg-black text-white rounded-full text-[12px] flex items-center justify-center">✕</button></div>)}</div>}</div><div><label className="text-[13px] font-semibold text-[#1E1B4B]">WhatsApp Number * (08100145906 → 2348100145906)</label><input value={wa} onChange={e=>setWa(e.target.value)} className="w-full mt-1.5 h-12 px-4 bg-white rounded-xl border border-gray-200 text-[15px] outline-none focus:border-[#5B21B6]" placeholder="08100145906" /></div><div className="flex gap-3"><div className="flex-1"><label className="text-[13px] font-semibold text-[#1E1B4B]">Call Number</label><input value={callNum} onChange={e=>setCallNum(e.target.value)} className="w-full mt-1.5 h-12 px-4 bg-white rounded-xl border border-gray-200 text-[15px] outline-none focus:border-[#5B21B6]" placeholder="08100145906" /></div><div className="flex-1"><label className="text-[13px] font-semibold text-[#1E1B4B]">Campus Location</label><select value={campus} onChange={e=>setCampus(e.target.value)} className="w-full mt-1.5 h-12 px-4 bg-white rounded-xl border border-gray-200 text-[15px] outline-none"><option>Academic Block</option><option>Hostel A</option><option>Hostel B</option><option>Hostel C</option><option>Main Gate</option><option>Library</option><option>Others</option></select></div></div><button onClick={handlePublish} disabled={loading} className="w-full h-14 bg-[#5B21B6] text-white rounded-full font-bold text-[15px] mt-2 disabled:opacity-50">{loading?'Publishing...':'Publish Listing'}</button><p className="text-[11px] text-center text-gray-500">By publishing, you agree to campus safety rules. Buyers contact you via WhatsApp Bridge.</p></div></div></div>)
+
+const CATS=['Electronics','Phones','Fashion','Books','Home','Vehicles','Sports','More']
+const CONDS=['New','Like New','Good','Fair']
+
+export default function Sell(){
+  const [isDark,setIsDark]=useState(false)
+  useEffect(()=>{
+    const check=()=>{
+      const saved=localStorage.getItem('techu-theme')
+      setIsDark(document.documentElement.classList.contains('dark') || saved==='dark')
+    }
+    check()
+    const obs=new MutationObserver(check)
+    obs.observe(document.documentElement,{attributes:true,attributeFilter:['class']})
+    window.addEventListener('theme-change',check as any)
+    return ()=>{obs.disconnect(); window.removeEventListener('theme-change',check as any)}
+  },[])
+  const [title,setTitle]=useState('')
+  const [price,setPrice]=useState('')
+  const [category,setCategory]=useState('')
+  const [condition,setCondition]=useState('')
+  const [description,setDescription]=useState('')
+  const [whatsapp,setWhatsapp]=useState('')
+  const [call,setCall]=useState('')
+  const [location,setLocation]=useState('')
+  const [images,setImages]=useState<string[]>([])
+  const [previews,setPreviews]=useState<string[]>([])
+  const [loading,setLoading]=useState(false)
+  const [msg,setMsg]=useState('')
+
+  const inputBase=`w-full rounded-2xl border h-12 px-4 text-[14px] outline-none focus:ring-2 focus:ring-[#5B21B6] ${isDark?'bg-[#1A1A1E] border-[#2A2A2E] text-white placeholder:text-gray-500':'bg-white border-gray-200 text-black placeholder:text-gray-400'}`
+  const textAreaBase=`w-full rounded-2xl border p-4 text-[14px] outline-none focus:ring-2 focus:ring-[#5B21B6] min-h-[110px] ${isDark?'bg-[#1A1A1E] border-[#2A2A2E] text-white placeholder:text-gray-500':'bg-white border-gray-200 text-black placeholder:text-gray-400'}`
+  const labelBase=`text-[14px] font-bold ${isDark?'text-white':'text-[#1E1B4B]'}`
+  const hintBase=`text-[12px] ${isDark?'text-gray-400':'text-gray-500'}`
+
+  const handleImages=async(e:any)=>{
+    const files=Array.from(e.target.files||[]).slice(0,3-images.length) as File[]
+    for(const file of files){
+      const compressed=await new Promise<string>((res)=>{
+        const img=new Image()
+        const url=URL.createObjectURL(file)
+        img.onload=()=>{
+          const canvas=document.createElement('canvas')
+          const max=800
+          let w=img.width, h=img.height
+          if(w>h){ if(w>max){h*=max/w; w=max} } else { if(h>max){w*=max/h; h=max} }
+          canvas.width=w; canvas.height=h
+          canvas.getContext('2d')?.drawImage(img,0,0,w,h)
+          res(canvas.toDataURL('image/jpeg',0.7))
+        }
+        img.src=url
+      })
+      setImages(p=>[...p,compressed])
+      setPreviews(p=>[...p,compressed])
+    }
+  }
+
+  const submit=async()=>{
+    if(!title||!price||!description){ setMsg('Fill Title, Price, Description'); return }
+    setLoading(true)
+    try{
+      let wp=whatsapp.replace(/\D/g,'')
+      if(wp.startsWith('0')) wp='234'+wp.slice(1)
+      if(!wp.startsWith('234')) wp='234'+wp
+      const {error}=await supabase.from('products').insert([{
+        title, price, category, condition, description,
+        whatsapp_number:wp, call_number:call, location, campus_location:location,
+        images, image_url:images[0]||'', status:'pending', views:0
+      }])
+      if(error) throw error
+      setMsg('✅ Submitted! Admin will approve soon.')
+      setTitle(''); setPrice(''); setDescription(''); setImages([]); setPreviews([])
+    }catch(err:any){ setMsg('Error: '+err.message) }
+    finally{ setLoading(false) }
+  }
+
+  return (
+    <div className={`min-h-screen pb-24 ${isDark?'bg-[#0F0F12]':'bg-[#F8F7FF]'}`}>
+      <div className="max-w-[600px] mx-auto px-4 pt-4">
+        <div className="flex items-center gap-2 mb-2">
+          <Link href="/" className={`${isDark?'text-gray-400':'text-gray-500'} text-[13px]`}>← Back</Link>
+        </div>
+        <h1 className={`text-[20px] font-extrabold ${isDark?'text-white':'text-[#1E1B4B]'}`}>Sell an Item</h1>
+        <p className={`${hintBase} mt-1`}>Large touch-friendly • 3 images max • WhatsApp Bridge</p>
+
+        <div className="mt-5 space-y-4">
+          <div>
+            <label className={labelBase}>Title *</label>
+            <input value={title} onChange={e=>setTitle(e.target.value)} placeholder="e.g. Used iPhone 11, Hostel chair" className={`${inputBase} mt-2`} />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={labelBase}>Price ₦ *</label>
+              <input value={price} onChange={e=>setPrice(e.target.value)} placeholder="32000" type="number" className={`${inputBase} mt-2`} />
+            </div>
+            <div>
+              <label className={labelBase}>Category</label>
+              <select value={category} onChange={e=>setCategory(e.target.value)} className={`${inputBase} mt-2`}>
+                <option value="">Select</option>
+                {CATS.map(c=><option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label className={labelBase}>Condition</label>
+            <select value={condition} onChange={e=>setCondition(e.target.value)} className={`${inputBase} mt-2`}>
+              <option value="">Select condition</option>
+              {CONDS.map(c=><option key={c} value={c}>{c}</option>)}
+            </select>
+          </div>
+
+          <div>
+            <label className={labelBase}>Description *</label>
+            <textarea value={description} onChange={e=>setDescription(e.target.value)} placeholder="Describe condition, location, reason for selling..." className={`${textAreaBase} mt-2`} />
+          </div>
+
+          <div>
+            <label className={labelBase}>Images (3 max, auto compress 800px)</label>
+            <div className="mt-2 flex items-center gap-3">
+              <label className={`px-4 h-10 rounded-xl flex items-center text-[13px] font-bold cursor-pointer ${isDark?'bg-[#2A2A2E] text-white':'bg-gray-800 text-white'}`}>Choose files
+                <input type="file" accept="image/*" multiple onChange={handleImages} className="hidden" />
+              </label>
+              <span className={hintBase}>{previews.length}/3</span>
+            </div>
+            {previews.length>0 && (
+              <div className="mt-3 grid grid-cols-3 gap-2">
+                {previews.map((src,i)=>(
+                  <div key={i} className="relative h-24 rounded-xl overflow-hidden border">
+                    <img src={src} className="w-full h-full object-cover" />
+                    <button onClick={()=>{setImages(p=>p.filter((_,j)=>j!==i)); setPreviews(p=>p.filter((_,j)=>j!==i))}} className="absolute top-1 right-1 w-6 h-6 bg-black/70 text-white rounded-full text-[12px]">✕</button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 gap-3">
+            <div>
+              <label className={labelBase}>WhatsApp Number</label>
+              <input value={whatsapp} onChange={e=>setWhatsapp(e.target.value)} placeholder="08100145906" className={`${inputBase} mt-2`} />
+            </div>
+            <div>
+              <label className={labelBase}>Call Number</label>
+              <input value={call} onChange={e=>setCall(e.target.value)} placeholder="08100145906" className={`${inputBase} mt-2`} />
+            </div>
+            <div>
+              <label className={labelBase}>Campus Location</label>
+              <input value={location} onChange={e=>setLocation(e.target.value)} placeholder="e.g. North Hostel, Engineering block" className={`${inputBase} mt-2`} />
+            </div>
+          </div>
+
+          {msg && <div className={`p-3 rounded-xl text-[13px] ${msg.startsWith('✅')?'bg-green-100 text-green-800':'bg-red-100 text-red-800'}`}>{msg}</div>}
+
+          <button onClick={submit} disabled={loading} className="w-full h-12 bg-[#5B21B6] text-white rounded-full font-bold text-[14px] disabled:opacity-50">{loading?'Publishing...':'Publish Listing'}</button>
+        </div>
+      </div>
+    </div>
+  )
 }
