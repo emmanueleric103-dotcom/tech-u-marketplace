@@ -1,80 +1,185 @@
-"use client"
+'use client'
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { useRouter } from 'next/navigation'
 
-function normalizeWA(v:string){
-  let d=v.replace(/\D/g,''); if(d.startsWith('0')) d='234'+d.slice(1); return d
+function normalizeWA(num:string){
+  let s = num.replace(/[^0-9]/g,'')
+  if(s.startsWith('0')) s = '234'+s.slice(1)
+  if(s.startsWith('+')) s = s.slice(1)
+  if(!s.startsWith('234') && s.length===10) s = '234'+s
+  return s
 }
 
-export default function Sell(){
-  const [form,setForm]=useState({title:'',price:'',category:'phones',condition:'Good',description:'',wa:'',call:'',location:'Hall 2'})
+export default function SellPage(){
+  const router = useRouter()
+  const [title,setTitle]=useState('')
+  const [price,setPrice]=useState('')
+  const [category,setCategory]=useState('Books')
+  const [condition,setCondition]=useState('New')
+  const [description,setDescription]=useState('')
+  const [wa,setWa]=useState('')
+  const [callNum,setCallNum]=useState('')
+  const [campus,setCampus]=useState('Academic Block')
   const [images,setImages]=useState<string[]>([])
-  const [err,setErr]=useState<any>({})
-  const [ok,setOk]=useState(false)
+  const [loading,setLoading]=useState(false)
 
-  const handleImg = async (e:any)=>{
-    const files = Array.from(e.target.files || []).slice(0,3-images.length) as File[]
-    for(const f of files){
-      const reader = new FileReader()
-      const p = new Promise<string>(res=>{
-        reader.onload=()=>{
-          const img = new Image()
-          img.onload=()=>{
-            const canvas=document.createElement('canvas')
-            const max=800
-            let w=img.width,h=img.height
-            if(w>h){ if(w>max){ h*=max/w; w=max } } else { if(h>max){ w*=max/h; h=max } }
+  const removeImage = (idx:number)=>{
+    setImages(prev=>prev.filter((_,i)=>i!==idx))
+  }
+
+  const handleFiles = async (e:any)=>{
+    const files = Array.from(e.target.files || []) as File[]
+    const remaining = 3 - images.length
+    const toProcess = files.slice(0, remaining)
+    for(const file of toProcess){
+      const compressed = await new Promise<string>((resolve)=>{
+        const img = new Image()
+        const reader = new FileReader()
+        reader.onload = (ev)=>{
+          img.onload = ()=>{
+            const canvas = document.createElement('canvas')
+            const max = 800
+            let w = img.width, h = img.height
+            if(w>h){ if(w>max){ h = h*max/w; w=max } } else { if(h>max){ w = w*max/h; h=max } }
             canvas.width=w; canvas.height=h
-            const ctx=canvas.getContext('2d'); ctx?.drawImage(img,0,0,w,h)
-            res(canvas.toDataURL('image/jpeg',0.7))
+            const ctx = canvas.getContext('2d')
+            ctx?.drawImage(img,0,0,w,h)
+            resolve(canvas.toDataURL('image/jpeg',0.7))
           }
-          img.src=reader.result as string
+          img.src = ev.target?.result as string
         }
+        reader.readAsDataURL(file)
       })
-      reader.readAsDataURL(f)
-      const b64 = await p
-      setImages(s=>[...s,b64].slice(0,3))
+      setImages(prev=>[...prev, compressed])
+    }
+    e.target.value=''
+  }
+
+  const handlePublish = async ()=>{
+    if(!title.trim()){ alert('Title required'); return }
+    if(!price.trim()){ alert('Price required'); return }
+    if(!description.trim()){ alert('Description required'); return }
+    if(!wa.trim()){ alert('WhatsApp required'); return }
+    if(images.length===0){ alert('Add at least 1 image'); return }
+
+    setLoading(true)
+    try{
+      const waNorm = normalizeWA(wa)
+      const callNorm = callNum ? normalizeWA(callNum) : waNorm
+
+      const payloadFull:any = {
+        title: title.trim(),
+        description: description.trim(),
+        price: parseFloat(price) || 0,
+        category,
+        condition,
+        location: campus,
+        campus_location: campus,
+        whatsapp_number: waNorm,
+        call_number: callNorm,
+        images,
+        image_url: images[0],
+        status: 'pending'
+      }
+
+      let { error } = await supabase.from('products').insert([payloadFull])
+
+      if(error){
+        console.log('Full insert failed, trying minimal:', error.message)
+        const payloadMin:any = {
+          title: title.trim(),
+          description: description.trim(),
+          price: parseFloat(price) || 0,
+          category,
+          whatsapp_number: waNorm,
+          image_url: images[0],
+          status: 'pending'
+        }
+        const res2 = await supabase.from('products').insert([payloadMin])
+        if(res2.error) throw res2.error
+      }
+
+      alert('✅ Listed! Waiting for admin approval.')
+      router.push('/')
+    }catch(err:any){
+      console.error(err)
+      alert('❌ Publish failed: '+(err?.message||'Unknown error'))
+    }finally{
+      setLoading(false)
     }
   }
 
-  const submit = async ()=>{
-    const e:any={}
-    if(!form.title) e.title='Title required'
-    if(!form.price) e.price='Price required'
-    if(!form.description) e.description='Description required'
-    if(!form.wa) e.wa='WhatsApp required'
-    if(Object.keys(e).length){ setErr(e); return }
-    const payload = { ...form, price:Number(form.price), whatsapp:normalizeWA(form.wa), call_number:form.call||form.wa, images, status:'pending', views:0 }
-    const { error } = await supabase.from('listings').insert(payload)
-    if(!error){ setOk(true); setForm({title:'',price:'',category:'phones',condition:'Good',description:'',wa:'',call:'',location:'Hall 2'}); setImages([]) }
-  }
-
-  if(ok) return <div className="max-w-[560px] mx-auto p-6 pt-10 text-center"><div className="w-16 h-16 bg-green-100 rounded-full grid place-items-center mx-auto text-2xl">✅</div><h2 className="mt-4 font-bold text-xl">Listed! Pending approval</h2><p className="text-sm text-gray-500 mt-2">Your item will appear after admin review. You will get WhatsApp buyers directly.</p></div>
-
   return (
-    <div className="max-w-[560px] mx-auto px-4 pt-4 pb-10">
-      <h1 className="text-[22px] font-bold">Sell an Item</h1>
-      <p className="text-[13px] text-gray-500 mt-1">Large touch-friendly • 3 images max • WhatsApp Bridge</p>
-
-      <div className="mt-5 flex flex-col gap-4">
-        <div><label className="text-[13px] font-semibold">Title *</label><input value={form.title} onChange={e=>setForm({...form,title:e.target.value})} placeholder="e.g. iPhone 13 Pro Neat" className="mt-1 w-full min-h-[48px] rounded-xl border border-[#E9E5FF] px-4 text-[16px]" />{err.title && <p className="text-red-500 text-xs mt-1">{err.title}</p>}</div>
-        <div className="grid grid-cols-2 gap-3">
-          <div><label className="text-[13px] font-semibold">Price ₦ *</label><input value={form.price} onChange={e=>setForm({...form,price:e.target.value})} type="number" className="mt-1 w-full min-h-[48px] rounded-xl border px-4 text-[16px]" placeholder="420000" />{err.price && <p className="text-red-500 text-xs mt-1">{err.price}</p>}</div>
-          <div><label className="text-[13px] font-semibold">Category</label><select value={form.category} onChange={e=>setForm({...form,category:e.target.value})} className="mt-1 w-full min-h-[48px] rounded-xl border px-4 text-[16px] bg-white"><option value="phones">Phones</option><option value="electronics">Electronics</option><option value="fashion">Fashion</option><option value="books">Books</option><option value="home">Home</option><option value="vehicles">Vehicles</option><option value="sports">Sports</option></select></div>
+    <div className="min-h-screen bg-[#F8F7FF] pb-24">
+      <div className="max-w-[600px] mx-auto px-4 pt-6">
+        <h1 className="text-[20px] font-bold text-[#1E1B4B]">Sell an Item</h1>
+        <p className="text-[13px] text-gray-500 mt-1">Large touch-friendly • 3 images max • WhatsApp Bridge</p>
+        <div className="mt-5 space-y-4">
+          <div>
+            <label className="text-[13px] font-semibold text-[#1E1B4B]">Title *</label>
+            <input value={title} onChange={e=>setTitle(e.target.value)} className="w-full mt-1.5 h-12 px-4 bg-white rounded-xl border border-gray-200 text-[15px] outline-none focus:border-[#5B21B6]" />
+          </div>
+          <div className="flex gap-3">
+            <div className="flex-1">
+              <label className="text-[13px] font-semibold text-[#1E1B4B]">Price ₦ *</label>
+              <input value={price} onChange={e=>setPrice(e.target.value)} type="number" className="w-full mt-1.5 h-12 px-4 bg-white rounded-xl border border-gray-200 text-[15px] outline-none focus:border-[#5B21B6]" />
+            </div>
+            <div className="flex-1">
+              <label className="text-[13px] font-semibold text-[#1E1B4B]">Category</label>
+              <select value={category} onChange={e=>setCategory(e.target.value)} className="w-full mt-1.5 h-12 px-4 bg-white rounded-xl border border-gray-200 text-[15px] outline-none">
+                <option>Books</option><option>Electronics</option><option>Phones</option><option>Fashion</option><option>Home</option><option>Vehicles</option><option>Sports</option><option>Others</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <label className="text-[13px] font-semibold text-[#1E1B4B]">Condition</label>
+            <select value={condition} onChange={e=>setCondition(e.target.value)} className="w-full mt-1.5 h-12 px-4 bg-white rounded-xl border border-gray-200 text-[15px] outline-none">
+              <option>New</option><option>Like New</option><option>Fair</option><option>Used</option>
+            </select>
+          </div>
+          <div>
+            <label className="text-[13px] font-semibold text-[#1E1B4B]">Description *</label>
+            <textarea value={description} onChange={e=>setDescription(e.target.value)} className="w-full mt-1.5 min-h-[90px] p-4 bg-white rounded-xl border border-gray-200 text-[15px] outline-none focus:border-[#5B21B6] resize-y" />
+          </div>
+          <div>
+            <label className="text-[13px] font-semibold text-[#1E1B4B]">Images (3 max, auto compress 800px)</label>
+            <div className="mt-1.5 flex items-center gap-2">
+              <input type="file" accept="image/*" multiple onChange={handleFiles} className="text-[13px]" />
+              <span className="text-[12px] text-gray-500">{images.length}/3</span>
+            </div>
+            {images.length>0 && (
+              <div className="flex gap-2 mt-3 flex-wrap">
+                {images.map((src,idx)=>(
+                  <div key={idx} className="relative w-20 h-20 rounded-xl overflow-hidden border border-gray-200 bg-white">
+                    <img src={src} alt="" className="w-full h-full object-cover" />
+                    <button onClick={()=>removeImage(idx)} type="button" className="absolute -top-1 -right-1 w-6 h-6 bg-black text-white rounded-full text-[12px] flex items-center justify-center">✕</button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          <div>
+            <label className="text-[13px] font-semibold text-[#1E1B4B]">WhatsApp Number * (08100145906 → 2348100145906)</label>
+            <input value={wa} onChange={e=>setWa(e.target.value)} className="w-full mt-1.5 h-12 px-4 bg-white rounded-xl border border-gray-200 text-[15px] outline-none focus:border-[#5B21B6]" placeholder="08100145906" />
+          </div>
+          <div className="flex gap-3">
+            <div className="flex-1">
+              <label className="text-[13px] font-semibold text-[#1E1B4B]">Call Number</label>
+              <input value={callNum} onChange={e=>setCallNum(e.target.value)} className="w-full mt-1.5 h-12 px-4 bg-white rounded-xl border border-gray-200 text-[15px] outline-none focus:border-[#5B21B6]" placeholder="08100145906" />
+            </div>
+            <div className="flex-1">
+              <label className="text-[13px] font-semibold text-[#1E1B4B]">Campus Location</label>
+              <select value={campus} onChange={e=>setCampus(e.target.value)} className="w-full mt-1.5 h-12 px-4 bg-white rounded-xl border border-gray-200 text-[15px] outline-none">
+                <option>Academic Block</option><option>Hostel A</option><option>Hostel B</option><option>Hostel C</option><option>Main Gate</option><option>Library</option><option>Others</option>
+              </select>
+            </div>
+          </div>
+          <button onClick={handlePublish} disabled={loading} className="w-full h-14 bg-[#5B21B6] text-white rounded-full font-bold text-[15px] mt-2 disabled:opacity-50">
+            {loading?'Publishing...':'Publish Listing'}
+          </button>
+          <p className="text-[11px] text-center text-gray-500">By publishing, you agree to campus safety rules. Buyers contact you via WhatsApp Bridge.</p>
         </div>
-        <div><label className="text-[13px] font-semibold">Condition</label><select value={form.condition} onChange={e=>setForm({...form,condition:e.target.value})} className="mt-1 w-full min-h-[48px] rounded-xl border px-4 text-[16px] bg-white"><option>New</option><option>Like New</option><option>Good</option><option>Fair</option></select></div>
-        <div><label className="text-[13px] font-semibold">Description *</label><textarea value={form.description} onChange={e=>setForm({...form,description:e.target.value})} className="mt-1 w-full min-h-[96px] rounded-xl border px-4 py-3 text-[16px]" placeholder="Battery 92%, box included..." />{err.description && <p className="text-red-500 text-xs mt-1">{err.description}</p>}</div>
-
-        <div><label className="text-[13px] font-semibold">Images (3 max, auto compress 800px)</label><input type="file" multiple accept="image/*" onChange={handleImg} className="mt-1 block" /><div className="mt-2 flex gap-2">{images.map((b,i)=><img key={i} src={b} className="w-20 h-20 rounded-xl object-cover border" />)}</div></div>
-
-        <div><label className="text-[13px] font-semibold">WhatsApp Number * (08100145906 → 2348100145906)</label><input value={form.wa} onChange={e=>setForm({...form,wa:e.target.value})} className="mt-1 w-full min-h-[48px] rounded-xl border px-4 text-[16px]" placeholder="081..." />{err.wa && <p className="text-red-500 text-xs mt-1">{err.wa}</p>}</div>
-        <div className="grid grid-cols-2 gap-3">
-          <div><label className="text-[13px] font-semibold">Call Number</label><input value={form.call} onChange={e=>setForm({...form,call:e.target.value})} className="mt-1 w-full min-h-[48px] rounded-xl border px-4 text-[16px]" placeholder="Optional" /></div>
-          <div><label className="text-[13px] font-semibold">Campus Location</label><select value={form.location} onChange={e=>setForm({...form,location:e.target.value})} className="mt-1 w-full min-h-[48px] rounded-xl border px-4 text-[16px] bg-white"><option>Hall 1</option><option>Hall 2</option><option>Hall 3</option><option>Academic Block</option><option>Library</option><option>South Gate</option></select></div>
-        </div>
-
-        <button onClick={submit} className="w-full bg-[#5B21B6] text-white rounded-full py-4 font-bold text-[16px] mt-2">Publish Listing</button>
-        <p className="text-[11px] text-gray-500 text-center">By publishing, you agree to campus safety rules. Buyers contact you via WhatsApp Bridge.</p>
       </div>
     </div>
   )
