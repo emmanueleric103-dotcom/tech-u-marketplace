@@ -1,64 +1,27 @@
-"use client"
-import { useEffect, useState } from 'react'
+'use client'
+import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
-import { supabase } from '../../lib/supabase'
-
-function normalizeWA(v:string){ let d=v.replace(/\D/g,''); if(d.startsWith('0')) d='234'+d.slice(1); return d }
-
+import Link from 'next/link'
+import { supabase } from '../../../lib/supabase'
+function normalizeWA(num:string){if(!num)return'';let s=String(num).replace(/[^0-9]/g,'');if(s.startsWith('0'))s='234'+s.slice(1);if(s.startsWith('+'))s=s.slice(1);return s}
 export default function ProductDetail(){
-  const { id } = useParams()
-  const [p,setP]=useState<any>(null)
-  const [active,setActive]=useState(0)
+  const params=useParams();const id=params?.id as string
+  const [product,setProduct]=useState<any>(null);const [loading,setLoading]=useState(true);const [error,setError]=useState('')
   useEffect(()=>{
-    supabase.from('listings').select('*').eq('id',id).single().then(({data})=>{ if(data){ setP(data); supabase.from('listings').update({views:(data.views||0)+1}).eq('id',id).then(()=>{}) } })
+    const fetchProduct=async()=>{
+      if(!id){setError('No ID');setLoading(false);return}
+      try{
+        const {data,error}=await supabase.from('products').select('*').eq('id',id).maybeSingle()
+        if(error){setError(error.message)}else if(!data){setError('Product not found')}else{setProduct(data)}
+      }catch(e:any){setError(e.message||'Failed')}
+      finally{setLoading(false)}
+    }
+    fetchProduct()
   },[id])
-  if(!p) return <div className="p-6">Loading...</div>
-  const wa = normalizeWA(p.whatsapp || p.wa || '')
-  const msg = `Hi! I saw ${p.title} on TECH-U Marketplace. Is it still available? ${typeof window!=='undefined'?window.location.href:''}`
-  const waLink = `https://wa.me/${wa}?text=${encodeURIComponent(msg)}`
-
+  if(loading){return <div className="min-h-screen bg-white p-6 pb-24"><div className="max-w-[600px] mx-auto"><div className="text-[14px]">Loading...</div><div className="mt-4 h-64 bg-gray-100 rounded-2xl animate-pulse"></div></div></div>}
+  if(error||!product){return <div className="min-h-screen bg-white p-6 pb-24"><div className="max-w-[600px] mx-auto text-center pt-20"><div className="text-[16px] font-bold">Product not found</div><div className="text-[12px] text-gray-500 mt-2">{error}</div><Link href="/" className="inline-block mt-6 bg-[#5B21B6] text-white rounded-full px-6 py-3 text-[13px] font-bold">Back to Home</Link></div></div>}
+  const waNorm=normalizeWA(product.whatsapp_number||product.whatsapp||'');const callNorm=normalizeWA(product.call_number||'');const images=product.images&&Array.isArray(product.images)&&product.images.length>0?product.images:[product.image_url].filter(Boolean);const waMessage=`Hi! I saw ${product.title} (₦${product.price}) on TECH-U Marketplace. Is it still available?`;const waLink=waNorm?`https://wa.me/${waNorm}?text=${encodeURIComponent(waMessage)}`:''
   return (
-    <div className="max-w-[900px] mx-auto px-4 pt-4 pb-28">
-      <div className="grid md:grid-cols-[1.2fr_0.8fr] gap-6">
-        <div>
-          <div className="bg-[#F5F3FF] rounded-[20px] h-[320px] md:h-[420px] grid place-items-center relative overflow-hidden">
-            {p.images?.[active] ? <img src={p.images[active]} className="w-full h-full object-cover" /> : <span className="text-5xl">{p.emoji||'📦'}</span>}
-            <span className="absolute top-3 left-3 bg-white px-3 py-1 rounded-full text-xs font-semibold">{p.condition}</span>
-          </div>
-          <div className="mt-3 flex gap-2">
-            {(p.images||[1,2,3]).slice(0,4).map((_:any,i:number)=>(
-              <button key={i} onClick={()=>setActive(i)} className={`w-16 h-16 rounded-xl border-2 overflow-hidden ${active===i?'border-[#5B21B6]':'border-transparent'}`}>
-                {p.images?.[i]? <img src={p.images[i]} className="w-full h-full object-cover" /> : <span className="grid place-items-center w-full h-full bg-[#F5F3FF]">{i+1}</span>}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div>
-          <h1 className="text-[22px] font-bold leading-tight text-[#1E1B4B]">{p.title}</h1>
-          <p className="mt-2 text-[26px] font-extrabold text-[#5B21B6]">₦{Number(p.price).toLocaleString()}</p>
-          <div className="mt-3 flex flex-wrap gap-2 text-[12px]">
-            <span className="bg-[#F5F3FF] px-3 py-1 rounded-full">📍 {p.location}</span>
-            <span className="bg-[#FFFBEB] px-3 py-1 rounded-full">👁️ {p.views} views</span>
-            <span className="bg-white border px-3 py-1 rounded-full">{p.time_ago||'recently'}</span>
-          </div>
-
-          <div className="mt-5 bg-white border border-[#E9E5FF] rounded-2xl p-4 flex items-center gap-3">
-            <span className="w-10 h-10 rounded-full bg-[#5B21B6] text-white grid place-items-center font-bold">{(p.seller_name||p.seller||'S')[0]}</span>
-            <div><p className="font-semibold text-[14px]">{p.seller_name||p.seller||'Campus Seller'}</p><p className="text-[11px] text-green-600">● Verified TECH-U • Usually replies fast</p></div>
-          </div>
-
-          <div className="mt-4"><p className="font-semibold text-[14px]">Description</p><p className="text-[13px] text-gray-600 mt-1 leading-relaxed">{p.description}</p></div>
-
-          <div className="mt-6 grid grid-cols-1 gap-3">
-            <a href={waLink} target="_blank" className="w-full bg-[#25D366] text-white rounded-full py-4 font-bold text-center flex items-center justify-center gap-2">💬 Message Seller on WhatsApp</a>
-            <a href={`tel:${p.call_number||p.call||''}`} className="w-full bg-[#5B21B6] text-white rounded-full py-4 font-bold text-center">📞 Call Seller</a>
-            <p className="text-[11px] text-gray-500 text-center">WhatsApp Bridge • Open Graph ready: "{'Hi! I saw {title} on TECH-U Marketplace...'}"</p>
-          </div>
-
-          <div className="mt-6 bg-[#FFFBEB] border border-[#FDE68A] rounded-xl p-3 text-[11px]">🛡️ Meet at Academic Block or Library lobby. Check item before paying. No advance transfer.</div>
-        </div>
-      </div>
-    </div>
+    <div className="min-h-screen bg-white pb-24"><div className="max-w-[600px] mx-auto"><div className="px-4 pt-4 flex items-center gap-2"><Link href="/" className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">←</Link><span className="text-[13px] text-gray-500">Back</span></div><div className="mt-4 px-4"><div className="rounded-2xl overflow-hidden bg-gray-100 h-[320px]"><img src={images[0]||'https://via.placeholder.com/400'} alt="" className="w-full h-full object-cover" /></div></div><div className="px-4 mt-5"><div className="flex justify-between"><h1 className="text-[18px] font-bold flex-1">{product.title}</h1><span className="bg-[#5B21B6] text-white text-[10px] px-2 py-1 rounded-full">{product.condition||'New'}</span></div><div className="text-[20px] font-extrabold text-[#5B21B6] mt-1">₦{product.price}</div><div className="text-[12px] text-gray-500 mt-2">📍 {product.location||product.campus_location||'Campus'} • 📦 {product.category}</div><div className="mt-5"><h3 className="text-[13px] font-bold">Description</h3><p className="text-[13px] text-gray-600 mt-2 whitespace-pre-wrap">{product.description}</p></div><div className="mt-6 flex gap-3">{waLink&&<a href={waLink} target="_blank" className="flex-1 bg-[#25D366] text-white rounded-full h-12 flex items-center justify-center gap-2 text-[13px] font-bold">💬 WhatsApp</a>}{callNorm&&<a href={`tel:+${callNorm}`} className="flex-1 bg-[#5B21B6] text-white rounded-full h-12 flex items-center justify-center gap-2 text-[13px] font-bold">📞 Call</a>}</div></div></div></div>
   )
 }
