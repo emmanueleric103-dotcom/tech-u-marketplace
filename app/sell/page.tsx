@@ -1,46 +1,72 @@
-// app/sell/page.tsx - ANDROID FRIENDLY
 'use client'
+export const dynamic = 'force-dynamic'
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
 
-export default function SellPage(){
-  const [form,setForm]=useState({title:'',price:'',category:'',condition:'',description:'',whatsapp:'',phone:'',location:''})
-  const [errors,setErrors]=useState<any>({})
-  const [imgs,setImgs]=useState<string[]>([])
-  const validate=()=>{ const e:any={}; if(!form.title) e.title='Title required'; if(!form.price) e.price='Price required'; if(!form.category) e.category='Category required'; if(!form.description) e.description='Description required'; setErrors(e); return !Object.keys(e).length }
+function normalizeWA(num:string){
+  let n=num.replace(/\D/g,'')
+  if(n.startsWith('0')) n='62'+n.slice(1)
+  if(!n.startsWith('62')) n='62'+n
+  return n
+}
 
-  const onImages=async(e:React.ChangeEvent<HTMLInputElement>)=>{
-    const files=Array.from(e.target.files||[]).slice(0,3); const arr:string[]=[];
-    for(const f of files){ const b=await new Promise<string>(res=>{ const r=new FileReader(); r.onload=()=>res(r.result as string); r.readAsDataURL(f)}); arr.push(b) } setImgs(arr)
+export default function Sell(){
+  const [form,setForm]=useState({title:'',price:'',category:'Laptops',condition:'Used',description:'',whatsapp:'',location:''})
+  const [previews,setPreviews]=useState<string[]>([])
+  const [base64s,setBase64s]=useState<string[]>([])
+  const [uploading,setUploading]=useState(false)
+  const [done,setDone]=useState(false)
+
+  const handleFiles=async(e:React.ChangeEvent<HTMLInputElement>)=>{
+    const files=Array.from(e.target.files||[]).slice(0,4)
+    const np:string[]=[]; const nb:string[]=[]
+    for(const f of files){
+      np.push(URL.createObjectURL(f))
+      const b=await new Promise<string>(r=>{const rd=new FileReader();rd.onload=()=>r(rd.result as string);rd.readAsDataURL(f)})
+      nb.push(b)
+    }
+    setPreviews(np); setBase64s(nb)
   }
-  const fixWhats=(v:string)=>{ let x=v.replace(/\D/g,''); if(x.startsWith('0')) x='234'+x.slice(1); if(!x.startsWith('234')) x='234'+x; return '+'+x }
 
-  const submit=async()=>{
-    if(!validate()) return;
-    const payload={...form, whatsapp_number: fixWhats(form.whatsapp), phone_number: form.phone, images: imgs, status:'pending', price: Number(form.price)}
-    const { error } = await supabase.from('products').insert(payload); if(error) alert(error.message); else alert('Submitted for approval!')
+  const submit=async(e:React.FormEvent)=>{
+    e.preventDefault()
+    if(!form.title||!form.price){alert('Title & price required');return}
+    setUploading(true)
+    try{
+      const payload={title:form.title,price:Number(form.price),category:form.category,condition:form.condition,description:form.description,whatsapp:normalizeWA(form.whatsapp),location:form.location,images:base64s,created_at:new Date().toISOString()}
+      const {error}=await supabase.from('products').insert([payload])
+      if(error) throw error
+      setDone(true); setForm({title:'',price:'',category:'Laptops',condition:'Used',description:'',whatsapp:'',location:''}); setPreviews([]); setBase64s([])
+    }catch(err:any){alert('Failed: '+err.message)}finally{setUploading(false)}
+  }
+
+  if(done){
+    return (
+      <div className="max-w-lg mx-auto p-6 text-center">
+        <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl">✅</div>
+        <h1 className="text-2xl font-extrabold">Product Posted!</h1>
+        <button onClick={()=>setDone(false)} className="mt-6 bg-[#5B21B6] text-white px-6 py-3 rounded-full font-bold w-full">Sell Another</button>
+      </div>
+    )
   }
 
   return (
     <div className="max-w-lg mx-auto p-4 pb-24">
-      <h1 className="text-xl font-extrabold">Sell an Item</h1>
-      <div className="mt-4 space-y-4">
-        {[
-          {k:'title',label:'Product title',ph:'e.g. MacBook Air M1',type:'text'},
-          {k:'price',label:'Price in ₦',ph:'50000',type:'number'},
-        ].map(f=>(
-          <div key={f.k}><label className="text-sm font-bold">{f.label}</label><input value={(form as any)[f.k]} onChange={e=>setForm({...form,[f.k]:e.target.value})} placeholder={f.ph} type={f.type} className="mt-1 w-full h-12 rounded-xl border border-gray-200 px-4 text-[16px] focus:ring-2 focus:ring-[#5B21B6] outline-none"/><{errors[f.k] && <p className="text-xs text-red-600 mt-1">{errors[f.k]}</p>}</div>
-        ))}
-        <div><label className="text-sm font-bold">Category</label><select value={form.category} onChange={e=>setForm({...form,category:e.target.value})} className="mt-1 w-full h-12 rounded-xl border border-gray-200 px-4 text-[16px]"><option value="">Select category</option><option>Electronics</option><option>Phones</option><option>Fashion</option><option>Books</option><option>Home & Living</option><option>Vehicles</option><option>Sports</option></select>{errors.category && <p className="text-xs text-red-600 mt-1">{errors.category}</p>}</div>
-        <div><label className="text-sm font-bold">Condition</label><select value={form.condition} onChange={e=>setForm({...form,condition:e.target.value})} className="mt-1 w-full h-12 rounded-xl border border-gray-200 px-4 text-[16px]"><option>New</option><option>Like New</option><option>Used</option><option>Fair</option></select></div>
-        <div><label className="text-sm font-bold">Description</label><textarea value={form.description} onChange={e=>setForm({...form,description:e.target.value})} rows={4} className="mt-1 w-full rounded-xl border border-gray-200 p-4 text-[16px]"/><{errors.description && <p className="text-xs text-red-600 mt-1">{errors.description}</p>}</div>
-        <div><label className="text-sm font-bold">Product images (max 3)</label><label className="mt-1 w-full h-28 rounded-2xl border-2 border-dashed border-gray-200 grid place-items-center text-sm text-gray-500 cursor-pointer">Tap to upload<input type="file" multiple accept="image/*" className="hidden" onChange={onImages}/></label><div className="mt-2 grid grid-cols-3 gap-2">{imgs.map((src,i)=>(<div key={i} className="relative h-20 rounded-xl overflow-hidden"><img src={src} className="w-full h-full object-cover"/><button onClick={()=>setImgs(imgs.filter((_,j)=>j!==i))} className="absolute top-1 right-1 w-6 h-6 rounded-full bg-black/60 text-white text-xs">×</button></div>))}</div></div>
-        <div><label className="text-sm font-bold">WhatsApp number</label><input value={form.whatsapp} onChange={e=>setForm({...form,whatsapp:e.target.value})} placeholder="08012345678" className="mt-1 w-full h-12 rounded-xl border border-gray-200 px-4 text-[16px]"/><p className="text-[11px] text-gray-500 mt-1">Auto-converts 080... to +23480...</p></div>
-        <div><label className="text-sm font-bold">Call number</label><input value={form.phone} onChange={e=>setForm({...form,phone:e.target.value})} placeholder="08012345678" className="mt-1 w-full h-12 rounded-xl border border-gray-200 px-4 text-[16px]"/></div>
-        <div><label className="text-sm font-bold">Campus location (optional)</label><select value={form.location} onChange={e=>setForm({...form,location:e.target.value})} className="mt-1 w-full h-12 rounded-xl border border-gray-200 px-4 text-[16px]"><option value="">Select location</option><option>Main Campus</option><option>Faculty Area</option><option>Hostel</option><option>Gate Area</option></select></div>
-        <button onClick={submit} className="w-full h-14 rounded-full bg-[#5B21B6] text-white font-bold">Post Item for Review</button>
-      </div>
+      <h1 className="text-xl font-extrabold">Sell Item</h1>
+      <form onSubmit={submit} className="space-y-5 mt-4">
+        <input type="file" accept="image/*" multiple onChange={handleFiles} className="block w-full text-sm file:mr-3 file:bg-[#5B21B6] file:text-white file:px-4 file:py-2 file:rounded-full file:border-0" />
+        <div className="grid grid-cols-4 gap-2">{previews.map((s,i)=>(<img key={i} src={s} className="h-20 object-cover rounded-xl border" alt="preview" />))}</div>
+        <input value={form.title} onChange={e=>setForm({...form,title:e.target.value})} placeholder="Title" className="w-full h-12 px-4 rounded-2xl border" />
+        <input value={form.price} onChange={e=>setForm({...form,price:e.target.value})} placeholder="Price (Rp)" type="number" className="w-full h-12 px-4 rounded-2xl border" />
+        <div className="grid grid-cols-2 gap-3">
+          <select value={form.category} onChange={e=>setForm({...form,category:e.target.value})} className="h-12 px-4 rounded-2xl border bg-white"><option>Laptops</option><option>Phones</option><option>Accessories</option><option>Gaming</option></select>
+          <select value={form.condition} onChange={e=>setForm({...form,condition:e.target.value})} className="h-12 px-4 rounded-2xl border bg-white"><option>New</option><option>Used</option><option>Refurbished</option></select>
+        </div>
+        <textarea value={form.description} onChange={e=>setForm({...form,description:e.target.value})} placeholder="Description" rows={4} className="w-full p-4 rounded-2xl border" />
+        <input value={form.whatsapp} onChange={e=>setForm({...form,whatsapp:e.target.value})} placeholder="WhatsApp" className="w-full h-12 px-4 rounded-2xl border" />
+        <input value={form.location} onChange={e=>setForm({...form,location:e.target.value})} placeholder="Location" className="w-full h-12 px-4 rounded-2xl border" />
+        <button disabled={uploading} className="w-full h-14 bg-[#5B21B6] text-white rounded-2xl font-extrabold">{uploading?'Posting...':'Post Product'}</button>
+      </form>
     </div>
   )
 }
-
