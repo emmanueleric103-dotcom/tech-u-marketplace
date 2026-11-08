@@ -29,7 +29,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <head><link rel="apple-touch-icon" href="/icons/apple-touch-icon-180x180.png" /></head>
-      <body className="bg-white text-[#1E1B4B] overflow-x-hidden antialiased">
+      <body className="bg-white dark:bg-[#1A1A1E] text-[#1E1B4B] dark:text-white overflow-x-hidden antialiased">
         <Header />
         <main className="pb-20">{children}</main>
         <PWAInstall />
