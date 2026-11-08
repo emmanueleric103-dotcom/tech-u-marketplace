@@ -3,3 +3,10 @@
 @tailwind utilities;
 html.dark { color-scheme: dark; }
 html.dark body { background-color: #0F0F12; }
+
+/* DARK MODE BULLETPROOF - do not change light mode */
+html.dark .product-title, html.dark .product-card-title, html.dark [data-product-title] { color: #ffffff !important; }
+html.dark .product-title *, html.dark .product-card-title * { color: #ffffff !important; }
+html.dark .featured-card h3, html.dark .featured-card .title { color: #ffffff !important; }
+/* Keep price purple but lighter in dark mode */
+html.dark .product-price { color: #C4B5FD !important; }
