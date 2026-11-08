@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { requireAdmin } from '../../../lib/admin-auth';
 import { supabaseAdmin } from '@/app/lib/supabaseAdmin'
 import { checkRateLimit } from '@/app/lib/rateLimit'
 
 function clean(v:any){ const s=String(v||'').trim(); return s==='' ? null : s }
 
 export async function POST(req: NextRequest){
+  if (!(await requireAdmin(req))) { return NextResponse.json({ error: 'Unauthorized' }, { status: 401 }); }
   try{
     const ip = req.headers.get('x-forwarded-for')?.split(',')[0] || 'unknown'
     const { allowed, blockedUntil } = await checkRateLimit(`ip:${ip}:create_seller`, 5, 15)
